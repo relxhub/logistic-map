@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logistic Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body, html { height: 100%; margin: 0; font-family: 'Kanit', sans-serif; background-color: #f0f2f5; }
+        
+        /* --- Screen 1: Menu Dashboard --- */
+        #menu-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; padding: 20px; box-sizing: border-box; gap: 20px;
+        }
+        .menu-btn {
+            width: 100%; padding: 20px; border: none; border-radius: 15px;
+            font-size: 18px; font-weight: bold; color: white; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.1s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .menu-btn:active { transform: scale(0.98); }
+        .btn-pool { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-create { background: linear-gradient(135deg, #10b981, #059669); }
+        .role-badge { 
+            position: absolute; top: 20px; right: 20px; 
+            background: #e5e7eb; color: #374151; padding: 5px 10px; 
+            border-radius: 20px; font-size: 12px; font-weight: bold; 
+        }
+
+        /* --- Screen 2: Map (Create Job) --- */
+        #map-screen { display: none; height: 100%; width: 100%; position: relative; }
+        #map { height: 70%; width: 100%; }
+        #controls { 
+            height: 30%; background: white; padding: 20px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+            position: absolute; bottom: 0; left: 0; right: 0;
+        }
+        input {
+            padding: 15px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px;
+            width: 100%; box-sizing: border-box; outline: none; background: #fafafa;
+        }
+        .action-btn {
+            background-color: #2ea44f; color: white; border: none; 
+            padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold;
+            width: 100%; cursor: pointer;
+        }
+        .action-btn:disabled { background-color: #ccc; }
+        .back-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 10;
+            background: white; padding: 10px 15px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: none; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen">
+        <div class="role-badge" id="roleDisplay">User</div>
+        <h2 style="color: #333; margin-bottom: 30px;">ศูนย์ควบคุมงานจัดส่ง</h2>
+        
+        <button class="menu-btn btn-pool" id="btnViewPool" style="display:none;">
+            📊 ดูงานใน Pool (จัดการ)
+        </button>
+        
+        <button class="menu-btn btn-create" id="btnCreateJob" style="display:none;">
+            📦 สร้างงานส่งของ
+        </button>
+    </div>
+
+    <div id="map-screen">
+        <button class="back-btn" onclick="goBack()">🔙 เมนูหลัก</button>
+        <div id="map"></div>
+        <div id="controls">
+            <div style="font-size: 14px; color: #666;">📝 เลขบิล / Order ID</div>
+            <input type="text" id="billId" placeholder="ตัวอย่าง: INV-1001" />
+            <button class="action-btn" id="btnConfirm" disabled>📍 ปักหมุดบนแผนที่ก่อน</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // 1. รับค่า Role จาก URL
+        const params = new URLSearchParams(window.location.search);
+        const role = params.get('role') || 'UNKNOWN';
+        document.getElementById('roleDisplay').innerText = role;
+
+        // 2. Logic โชว์ปุ่มตามยศ
+        const btnPool = document.getElementById('btnViewPool');
+        const btnCreate = document.getElementById('btnCreateJob');
+
+        if (['SUPERADMIN', 'SUPERVISOR'].includes(role)) {
+            btnPool.style.display = 'flex';   // เห็นปุ่ม Pool
+            btnCreate.style.display = 'flex'; // เห็นปุ่มสร้าง
+        } else if (role === 'ADMIN') {
+            btnCreate.style.display = 'flex'; // เห็นแค่สร้าง
+        }
+
+        // --- Event Listeners ---
+
+        // ปุ่ม 1: ดู Pool -> ส่งคำสั่งกลับไปหาบอทให้รัน /pool
+        btnPool.addEventListener('click', () => {
+            tg.sendData(JSON.stringify({ action: "view_pool" }));
+        });
+
+        // ปุ่ม 2: สร้างงาน -> เปิดหน้าแผนที่ (ซ่อนเมนู)
+        btnCreate.addEventListener('click', () => {
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('map-screen').style.display = 'block';
+            if (!map) initMap(); // โหลดแผนที่เมื่อจำเป็น
+        });
+
+        function goBack() {
+            document.getElementById('map-screen').style.display = 'none';
+            document.getElementById('menu-screen').style.display = 'flex';
+        }
+
+        // --- MAP LOGIC (เหมือนเดิม) ---
+        let map, marker, selectedLocation = null;
+
+        function initMap() {
+            const bangkok = { lat: 13.7563, lng: 100.5018 };
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15, center: bangkok, disableDefaultUI: true, gestureHandling: "greedy", zoomControl: true
+            });
+            map.addListener("click", (e) => placeMarker(e.latLng));
+        }
+
+        function placeMarker(latLng) {
+            if (marker) marker.setMap(null);
+            marker = new google.maps.Marker({ position: latLng, map: map, animation: google.maps.Animation.DROP });
+            selectedLocation = { lat: latLng.lat(), lng: latLng.lng() };
+            tg.HapticFeedback.impactOccurred('medium');
+            checkReady();
+        }
+
+        const billInput = document.getElementById("billId");
+        const btnConfirm = document.getElementById("btnConfirm");
+        billInput.addEventListener("input", checkReady);
+
+        function checkReady() {
+            if (selectedLocation && billInput.value.trim() !== "") {
+                btnConfirm.disabled = false;
+                btnConfirm.innerText = "✅ ยืนยันงานส่งของ";
+            } else {
+                btnConfirm.disabled = true;
+                btnConfirm.innerText = "📍 กรอกเลขบิลและปักหมุด";
+            }
+        }
+
+        btnConfirm.addEventListener("click", () => {
+            if (selectedLocation && billInput.value) {
+                const data = JSON.stringify({
+                    action: "create_job",
+                    bill_id: billInput.value.trim(),
+                    lat: selectedLocation.lat,
+                    lng: selectedLocation.lng
+                });
+                tg.sendData(data); 
+            }
+        });
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+</body>
+</html>
