@@ -177,6 +177,12 @@
         <div id="rider-job-card"></div>
     </div>
 
+    <div id="view-history" class="view">
+        <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
+        <h3>📜 ประวัติงานย้อนหลัง</h3>
+        <div id="history-list"></div>
+    </div>
+
     <div id="map-overlay">
         <div class="map-header-bar">
             <button class="btn btn-outline" style="padding:8px 12px; width:auto;" onclick="closeMap()"><i class="fa-solid fa-arrow-left"></i></button>
@@ -241,38 +247,58 @@
         const menu = document.getElementById('menu-container');
         const nav = document.getElementById('bottom-nav');
         let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
+        let menuHtml = '';
 
+        // --- ADMIN / SUPERVISOR MENUS ---
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
-            let menuHtml = `
+            menuHtml += `
                 <div class="menu-item" onclick="goToPage('create-job')"><i class="fa-solid fa-plus-circle"></i><br>สร้างงาน</div>
                 <div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>
             `;
-
             if (role !== 'ADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('pool')"><i class="fa-solid fa-layer-group"></i><br>Pool</div>`;
                 navHtml += `<div class="nav-btn" onclick="nav('pool', this)"><i class="fa-solid fa-box"></i>Pool</div>`;
                 renderPoolList(data.pool_jobs || []);
             }
-
             if (role === 'ADMIN' || role === 'SUPERADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('monitor')"><i class="fa-solid fa-desktop"></i><br>Monitor</div>`;
                 navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>Monitor</div>`;
                 renderMonitor(data.monitor_jobs || []);
             }
-
-            menu.innerHTML = menuHtml;
-            renderPickupList(data.pickup_points || []);
             setupPickupSelector();
         }
 
+        // --- RIDER MENU (แก้ไขใหม่: ให้มีปุ่มกด ไม่ใช่เด้งไปเลย) ---
         if (role === 'RIDER') {
-            menu.style.display = 'none';
+            menuHtml += `
+                <div class="menu-item" onclick="nav('rider')"><i class="fa-solid fa-motorcycle"></i><br>งานปัจจุบัน</div>
+                <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
+            `;
             navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
+            
             renderRiderJob(data.current_job);
-            setTimeout(() => nav('rider', document.querySelectorAll('.nav-btn')[1]), 100);
+            renderHistory(data.history || []); // เรียกฟังก์ชันแสดงประวัติ
         }
 
+        // Render ลงหน้าจอ
+        menu.innerHTML = menuHtml;
+        menu.style.display = 'grid'; // บังคับให้แสดง Grid เสมอ
+        renderPickupList(data.pickup_points || []);
+
         nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
+    }
+
+    // เพิ่มฟังก์ชันแสดงประวัติ
+    function renderHistory(list) {
+        const el = document.getElementById('history-list');
+        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีประวัติงาน</div>'; return; }
+        el.innerHTML = list.map(h => `
+            <div class="card" style="border-left: 4px solid ${h.status==='COMPLETED'?'#00B900':'#dc3545'};">
+                <div class="card-header">${h.bill_id} <span class="role-badge">${h.status}</span></div>
+                <div class="card-row">📅 ${h.date}</div>
+                <div class="card-row">💰 ค่าเที่ยว: ${h.price} บาท</div>
+            </div>
+        `).join('');
     }
 
     function renderPickupList(list) {
