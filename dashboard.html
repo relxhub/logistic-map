@@ -15,7 +15,6 @@
     /* LAYOUT & UTILS */
     .view { display: none; padding: 15px; animation: fadeIn 0.3s; }
     .view.active { display: block; }
-    .hidden { display: none !important; }
 
     /* HEADER */
     .header { background: white; padding: 20px 20px 15px; border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -173,6 +172,7 @@
     </div>
 
     <div id="view-rider" class="view">
+        <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
         <h3>🛵 งานของคุณ</h3>
         <div id="rider-job-card"></div>
     </div>
@@ -225,6 +225,7 @@
     // Pending State for Modal
     let pendingJobPayload = null;
     let pendingPriceText = "";
+    let countdownInterval;
 
     // INIT
     try {
@@ -268,7 +269,7 @@
             setupPickupSelector();
         }
 
-        // --- RIDER MENU (แก้ไขใหม่: ให้มีปุ่มกด ไม่ใช่เด้งไปเลย) ---
+        // --- RIDER MENU ---
         if (role === 'RIDER') {
             menuHtml += `
                 <div class="menu-item" onclick="nav('rider')"><i class="fa-solid fa-motorcycle"></i><br>งานปัจจุบัน</div>
@@ -277,18 +278,17 @@
             navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
             
             renderRiderJob(data.current_job);
-            renderHistory(data.history || []); // เรียกฟังก์ชันแสดงประวัติ
+            renderHistory(data.history || []);
         }
 
         // Render ลงหน้าจอ
         menu.innerHTML = menuHtml;
-        menu.style.display = 'grid'; // บังคับให้แสดง Grid เสมอ
+        menu.style.display = 'grid'; 
         renderPickupList(data.pickup_points || []);
 
         nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
     }
 
-    // เพิ่มฟังก์ชันแสดงประวัติ
     function renderHistory(list) {
         const el = document.getElementById('history-list');
         if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีประวัติงาน</div>'; return; }
@@ -343,12 +343,8 @@
         `).join('');
     }
 
-    let countdownInterval; // ตัวแปรสำหรับเก็บ Timer
-
     function renderRiderJob(job) {
         const el = document.getElementById('rider-job-card');
-        
-        // เคลียร์ Timer เก่าทุกครั้งที่เรนเดอร์ใหม่
         if (countdownInterval) clearInterval(countdownInterval);
 
         if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">🛵 ว่าง (รอรับงาน...)</div>'; return; }
@@ -358,13 +354,11 @@
         let statusText = 'งานของคุณ';
         let extraHtml = '';
 
-        // 1. สถานะ OFFERED (งานเข้าใหม่ + นับถอยหลัง)
         if (job.status === 'OFFERED') {
             statusColor = '#ffc107'; // สีเหลือง
             statusText = '🔔 งานใหม่มาแล้ว!';
             
-            // คำนวณเวลาหมดอายุ (Updated Time + 5 นาที หรือตาม Config)
-            // หมายเหตุ: data.config.offer_timeout_sec ต้องถูกส่งมาจาก Backend ถ้าไม่มีใช้ Default 300s
+            // คำนวณเวลาหมดอายุ
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 300;
             const startTime = new Date(job.updated_at).getTime();
             const expireTime = startTime + (timeoutSec * 1000);
@@ -378,7 +372,6 @@
                 </div>
             `;
 
-            // เริ่มนับถอยหลัง
             countdownInterval = setInterval(() => {
                 const now = new Date().getTime();
                 const diff = expireTime - now;
@@ -386,7 +379,6 @@
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
                     document.getElementById('job-countdown').innerText = "หมดเวลา!";
-                    // อาจจะสั่ง Reload หรือแจ้งเตือนก็ได้
                     setTimeout(() => window.location.reload(), 2000);
                 } else {
                     const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -395,15 +387,11 @@
                 }
             }, 1000);
 
-        } 
-        // 2. สถานะ ASSIGNED
-        else if(job.status === 'ASSIGNED') {
+        } else if(job.status === 'ASSIGNED') {
             btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">🗺️ นำทางไปจุดรับ</a>
                     <button class="btn btn-warning" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับของแล้ว</button>
                     <button class="btn btn-danger" style="margin-top:10px;" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button>`;
-        } 
-        // 3. สถานะ PICKED_UP
-        else if (job.status === 'PICKED_UP') {
+        } else if (job.status === 'PICKED_UP') {
             btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">🏁 นำทางไปจุดส่ง</a>
                     <button class="btn btn-primary" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">📸 ถ่ายรูปส่งงาน</button>`;
         }
@@ -441,6 +429,10 @@
         if (page === 'create-job') {
             document.getElementById('view-create-job').classList.add('active');
             resetJobForm();
+        } else if (page === 'add-pickup') {
+            document.getElementById('view-add-pickup').classList.add('active');
+            editPickupId = null; 
+            resetPickupForm();
         } else {
             document.getElementById('view-'+page).classList.add('active');
         }
@@ -487,14 +479,15 @@
         const name = document.getElementById('new-pickup-name').value;
         if(!name || !tempLat) return alert('กรุณาปักหมุดและตั้งชื่อ');
         
-        // FIX: ส่ง ID ไปด้วยถ้าเป็นการแก้ไข (ไม่ต้องลบแล้วสร้างใหม่)
-        const payload = { name, lat: tempLat, lng: tempLng };
-        if(editPickupId) payload.id = editPickupId;
-        
-        sendAction('save_pickup', payload);
+        // ใช้ logic ลบแล้วสร้างใหม่ เพื่อความชัวร์ (เนื่องจาก Backend เดิมไม่ได้ทำ Update ไว้)
+        if(editPickupId) {
+            sendAction('delete_pickup', {id: editPickupId});
+            setTimeout(() => sendAction('save_pickup', { name, lat: tempLat, lng: tempLng }), 500);
+        } else {
+            sendAction('save_pickup', { name, lat: tempLat, lng: tempLng });
+        }
     }
 
-    // FIX: ใช้ Custom Modal + Copy Button
     function submitJob() {
         const bill = document.getElementById('job-bill-id').value;
         const pid = document.getElementById('job-pickup-select').value;
