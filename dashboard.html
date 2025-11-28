@@ -139,7 +139,6 @@
                 <option value="today">วันนี้</option>
                 <option value="week">อาทิตย์นี้</option>
                 <option value="month" selected>เดือนนี้</option>
-                <option value="year">ปีนี้</option>
                 <option value="all">ทั้งหมด</option>
             </select>
             <!-- Dropdown สำหรับ SuperAdmin เลือกดูรายคน -->
@@ -165,7 +164,7 @@
             <div class="modal-actions">
                 <button class="btn btn-copy" onclick="copyShippingPrice()"><i class="fa-solid fa-copy"></i> คัดลอก</button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">แก้ไข</button>
+                    <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">แก้ไข/ยกเลิก</button>
                     <button class="btn btn-primary" style="flex:1;" onclick="confirmAction()">ยืนยัน</button>
                 </div>
             </div>
@@ -199,7 +198,7 @@
             data = JSON.parse(decodeURIComponent(rawData));
             if(data.config) config = data.config;
             
-            // Failsafe: Clean Role String
+            // Failsafe: Clean Role String (Just in case backend sends 'Role.ADMIN')
             if(data.role && data.role.startsWith('Role.')) {
                 data.role = data.role.replace('Role.', '');
             }
@@ -253,7 +252,7 @@
             navHtml += `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
         }
 
-        // ✅ Render menu buttons BEFORE loading data
+        // ✅ IMPORTANT: Render menu buttons BEFORE loading data
         menu.innerHTML = menuHtml;
         menu.style.display = 'grid'; 
         nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
@@ -269,7 +268,7 @@
         
         if (role === 'RIDER') {
             try { renderRiderJob(data.current_job); } catch(e){ console.error(e); }
-            try { renderHistory(data.history || []); } catch(e){ console.error(e); }
+            try { renderFullHistory(); } catch(e){ console.error(e); } // ✅ Rider ใช้ Full History ได้แล้ว
         }
     }
 
@@ -291,7 +290,6 @@
             if(dateMode === 'today') dateMatch = d >= startOfDay;
             else if(dateMode === 'week') { const w = new Date(startOfDay); w.setDate(w.getDate()-7); dateMatch = d >= w; }
             else if(dateMode === 'month') { const m = new Date(startOfDay); m.setMonth(m.getMonth()-1); dateMatch = d >= m; }
-            else if(dateMode === 'year') { const y = new Date(startOfDay); y.setFullYear(y.getFullYear()-1); dateMatch = d >= y; }
             
             let userMatch = true;
             if(userMode !== 'all') userMatch = j.admin === userMode;
@@ -341,15 +339,15 @@
     }
 
     function renderMonitor(list) {
+        const filtered = (data.monitor_jobs || []);
         const el = document.getElementById('monitor-list');
-        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงาน</div>'; return; }
-        el.innerHTML = list.map(j => {
+        if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงาน</div>'; return; }
+        el.innerHTML = filtered.map(j => {
             const jobDataStr = encodeURIComponent(JSON.stringify(j));
             return `
             <div class="card">
                 <div class="card-header">${j.bill_id} <span class="role-badge">${j.status}</span></div>
                 <div class="card-row">👤 Rider: ${j.rider}</div>
-                <div class="card-row">💰 ค่ารถ: ${j.price}</div>
                 <div class="card-actions">
                     ${j.status === 'COMPLETED' ? `<a href="${j.proof}" target="_blank" class="btn btn-outline btn-sm">รูปจบงาน</a>` : ''}
                     ${!['COMPLETED', 'CANCELLED'].includes(j.status) ? `<button class="btn btn-outline btn-sm" onclick="prepareEditDest('${j.job_id}', '${jobDataStr}')">แก้ปลายทาง</button>` : ''}
@@ -362,7 +360,7 @@
         const el = document.getElementById('rider-job-card');
         if (countdownInterval) clearInterval(countdownInterval);
 
-        if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">🛵 ว่าง (รอรับงาน...)</div>'; return; }
+        if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px;">ว่าง</div>'; return; }
 
         let btns = '';
         let statusColor = '#00B900';
@@ -374,6 +372,7 @@
             statusText = '🔔 งานใหม่มาแล้ว!';
             
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
+            // Use Server Time + Time passed since load as base
             const serverTimeMs = new Date(data.server_time).getTime();
             const clientTimeMs = new Date().getTime();
             const timeDiff = clientTimeMs - serverTimeMs;
@@ -507,6 +506,7 @@
         }
     }
 
+    // --- CREATE JOB MODAL ---
     function submitJob() {
         const bill = document.getElementById('job-bill-id').value;
         const pid = document.getElementById('job-pickup-select').value;
@@ -533,15 +533,18 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
+    // --- EDIT DESTINATION LOGIC (NEW) ---
     function prepareEditDest(jobId, jobDataStr) {
         currentJobId = jobId;
         currentEditJobData = JSON.parse(decodeURIComponent(jobDataStr));
         openMap('edit_dest');
     }
 
+    // ฟังก์ชันคำนวณและแสดง Modal ยืนยันราคาใหม่
     function confirmEditDestPreview() {
         if (!currentEditJobData || !tempLat) return;
 
+        // คำนวณราคาใหม่ (Client Side Estimate)
         const oldPrice = parseFloat(currentEditJobData.price);
         const pickupLat = currentEditJobData.pickup_lat;
         const pickupLng = currentEditJobData.pickup_lng;
@@ -555,7 +558,9 @@
         let priceDetailHtml = '';
 
         if (fee > 0) {
+            // Logic: ถ้าไกลกว่าเดิมใช้ราคาใหม่, ใกล้กว่าใช้ราคาเดิม + fee
             finalPrice = (newPurePrice > oldPrice) ? (newPurePrice + fee) : (oldPrice + fee);
+            
             pendingCopyText = `ค่าจัดส่ง : ${finalPrice - fee} บาท\nค่าเปลี่ยนที่อยู่ : ${fee} บาท\nรวมค่าจัดส่ง : ${finalPrice} บาท`;
             
             priceDetailHtml = `
@@ -568,7 +573,7 @@
             `;
         } else {
             finalPrice = newPurePrice;
-            pendingCopyText = `ค่าจัดส่ง : ${finalPrice} บาท\nรวมค่าจัดส่ง : ${finalPrice} บาท`;
+            pendingCopyText = `ค่าจัดส่ง : ${finalPrice} บาท`; // ✅ แก้ไขตามข้อ 4
             
             priceDetailHtml = `
                 <div class="modal-line"><span>💵 ค่าส่งเดิม:</span> <span>${oldPrice} บาท</span></div>
@@ -593,6 +598,7 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
+    // --- SHARED MODAL HELPERS ---
     function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
     
     function confirmAction() {
@@ -618,6 +624,7 @@
         setTimeout(() => btn.innerHTML = oldText, 2000);
     }
 
+    // --- MAP LOGIC ---
     function openMap(mode) {
         mapMode = mode;
         document.getElementById('map-overlay').style.display = 'flex';
@@ -667,6 +674,7 @@
             document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
             showStaticMap('preview-job', tempLat, tempLng);
         } else if (mapMode === 'edit_dest') {
+            // เรียกฟังก์ชัน Preview ราคา แทนการส่งทันที
             confirmEditDestPreview();
         }
     });
@@ -684,11 +692,6 @@
     function cancelJob(id) { const r = prompt("เหตุผล:"); if(r) sendAction('cancel_job', {job_id: id, reason: r}); }
     function confirmSOS() { if(confirm("ยืนยัน SOS?")) sendAction('sos'); }
     
-    function setupPickupSelector() {
-        const sel = document.getElementById('job-pickup-select');
-        sel.innerHTML = '<option value="">-- เลือกจุดรับ --</option>' + (data.pickup_points || []).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    }
-
     function calcDist(lat1, lon1, lat2, lon2) {
         const R = 6371; 
         const dLat = (lat2 - lat1) * Math.PI / 180;
