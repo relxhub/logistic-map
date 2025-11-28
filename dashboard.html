@@ -76,6 +76,7 @@
     .nav-btn { text-align: center; color: #ccc; font-size: 10px; cursor: pointer; flex: 1; }
     .nav-btn.active { color: var(--primary); }
     .nav-btn i { font-size: 22px; display: block; margin-bottom: 4px; }
+    
     .fab { position: fixed; bottom: 90px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 800; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
@@ -115,7 +116,7 @@
         <h3>📦 สร้างงานใหม่</h3>
         <div class="form-group"><input type="text" id="job-search-input" placeholder="🔍 ปลายทาง..." onclick="openMap('job')" readonly /><button class="btn btn-primary" onclick="openMap('job')"><i class="fa-solid fa-map"></i></button></div>
         <div class="form-group"><div id="preview-job" class="map-preview" onclick="openMap('job')"><div class="map-preview-placeholder">แผนที่</div></div></div>
-        <div class="form-group"><select id="job-pickup-select"></select></div>
+        <div class="form-group"><select id="job-pickup-select"><option value="">-- กำลังโหลด --</option></select></div>
         <div class="form-group"><input type="text" id="job-bill-id" placeholder="เลขบิล" /></div>
         <button class="btn btn-primary" onclick="submitJob()">🚀 สร้างงาน</button>
     </div>
@@ -221,7 +222,7 @@
         let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
         let menuHtml = '';
 
-        // --- MENU LOGIC PER ROLE ---
+        // --- MENU LOGIC PER ROLE (UPDATED) ---
         
         // 1. SUPERADMIN (ครบทุกอย่าง)
         if (role === 'SUPERADMIN') {
@@ -237,7 +238,7 @@
             navHtml += `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
         }
         
-        // 2. SUPERVISOR (ตัดปุ่มสร้างงาน)
+        // 2. SUPERVISOR (เพิ่ม Monitor, ตัดปุ่มสร้างงาน)
         else if (role === 'SUPERVISOR') {
             menuHtml += `
                 <div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>
@@ -271,10 +272,9 @@
             navHtml += `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
         }
 
-        // Render Menu
         menu.innerHTML = menuHtml;
         menu.style.display = 'grid'; 
-        nav.innerHTML = navHtml; // ไม่มีปุ่ม X (ปิด)
+        nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
 
         // LOAD DATA
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
@@ -320,7 +320,7 @@
 
         el.innerHTML = filtered.map(h => {
             let details = '';
-            // เงื่อนไข Rider: แสดงน้อย
+            // เงื่อนไข Rider: แสดงน้อย (ตัดชื่อผู้สร้าง, ชื่อไรเดอร์, รูปจบงานออก)
             if (data.role === 'RIDER') {
                 details = `
                     <div class="card-row">📦 พัสดุ: ${h.bill_id}</div>
@@ -372,7 +372,7 @@
         `}).join('');
     }
 
-    // (Remaining functions unchanged but kept for completeness)
+    // (Helper Functions)
     function renderPickupList(list) {
         const el = document.getElementById('pickup-list');
         if(list.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ว่างเปล่า</div>'; return; }
@@ -412,7 +412,7 @@
     function nav(id, el) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); if(el) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); } }
     function goToPage(page) { 
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); 
-        if (page === 'create-job') { document.getElementById('view-create-job').classList.add('active'); resetJobForm(); setupPickupSelector(); } // ✅ Fix: Call Setup when opening page
+        if (page === 'create-job') { document.getElementById('view-create-job').classList.add('active'); resetJobForm(); setupPickupSelector(); } 
         else if (page === 'add-pickup') { document.getElementById('view-add-pickup').classList.add('active'); editPickupId = null; resetPickupForm(); } 
         else { document.getElementById('view-'+page).classList.add('active'); } 
     }
@@ -460,7 +460,6 @@
     function confirmSOS() { if(confirm("SOS?")) sendAction('sos'); }
     function setupPickupSelector(){ 
         const el = document.getElementById('job-pickup-select');
-        // Fix: Check if element exists before setting innerHTML (prevent crash)
         if(el) {
             el.innerHTML='<option value="">-- เลือก --</option>'+(data.pickup_points||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); 
         }
