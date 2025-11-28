@@ -213,7 +213,7 @@
         document.getElementById('user-name').innerText = data.name || 'Guest';
         document.getElementById('user-id').innerText = `ID: ${data.id || '-'}`;
         document.getElementById('user-role').innerText = data.role || '-';
-        const serverTime = new Date(data.server_time).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const serverTime = new Date(data.server_time).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         document.getElementById('user-id').innerHTML = `ID: ${data.id || '-'}<br><span style="color:${data.role==='RIDER'?'red':'#888'}; font-size:10px;">ข้อมูลเมื่อ: ${serverTime}</span>`;
 
         if(data.filter_admins) {
