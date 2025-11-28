@@ -133,6 +133,21 @@
     <div id="view-history" class="view">
         <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
         <h3>📜 ประวัติงาน</h3>
+        
+        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+            <select id="hist-filter-date" onchange="renderFullHistory()" style="flex:1;">
+                <option value="today">วันนี้</option>
+                <option value="week">อาทิตย์นี้</option>
+                <option value="month" selected>เดือนนี้</option>
+                <option value="year">ปีนี้</option>
+                <option value="all">ทั้งหมด</option>
+            </select>
+            <!-- Dropdown สำหรับ SuperAdmin เลือกดูรายคน -->
+            <select id="hist-filter-user" onchange="renderFullHistory()" style="flex:1; display:none;">
+                <option value="all">-- ทุกคน --</option>
+            </select>
+        </div>
+
         <div id="history-list"></div>
     </div>
 
@@ -145,12 +160,12 @@
     <!-- CONFIRM MODAL (GENERAL) -->
     <div id="confirm-modal" class="modal-overlay">
         <div class="modal-box">
-            <div class="modal-title" id="modal-title">📦 สรุปข้อมูลงาน</div>
+            <div class="modal-title" id="modal-title">📦 สรุป</div>
             <div class="modal-detail" id="modal-content"></div>
             <div class="modal-actions">
-                <button class="btn btn-copy" onclick="copyShippingPrice()"><i class="fa-solid fa-copy"></i> คัดลอกค่าส่ง</button>
+                <button class="btn btn-copy" onclick="copyShippingPrice()"><i class="fa-solid fa-copy"></i> คัดลอก</button>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">แก้ไข/ยกเลิก</button>
+                    <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">แก้ไข</button>
                     <button class="btn btn-primary" style="flex:1;" onclick="confirmAction()">ยืนยัน</button>
                 </div>
             </div>
@@ -184,7 +199,7 @@
             data = JSON.parse(decodeURIComponent(rawData));
             if(data.config) config = data.config;
             
-            // Failsafe: Clean Role String (Just in case backend sends 'Role.ADMIN')
+            // Failsafe: Clean Role String
             if(data.role && data.role.startsWith('Role.')) {
                 data.role = data.role.replace('Role.', '');
             }
@@ -193,6 +208,12 @@
         document.getElementById('user-name').innerText = data.name || 'Guest';
         document.getElementById('user-id').innerText = `ID: ${data.id || '-'}`;
         document.getElementById('user-role').innerText = data.role || '-';
+        
+        if(data.filter_admins) {
+            const sel = document.getElementById('hist-filter-user');
+            sel.style.display = 'block';
+            data.filter_admins.forEach(u => sel.innerHTML += `<option value="${u}">${u}</option>`);
+        }
 
         renderMenu(data.role);
     } catch (e) { console.error("Init Error", e); }
@@ -208,15 +229,19 @@
             menuHtml += `
                 <div class="menu-item" onclick="goToPage('create-job')"><i class="fa-solid fa-plus-circle"></i><br>สร้างงาน</div>
                 <div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>
+                <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div>
             `;
+            nh = navHtml + `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
+            
             if (role !== 'ADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('pool')"><i class="fa-solid fa-layer-group"></i><br>Pool</div>`;
-                navHtml += `<div class="nav-btn" onclick="nav('pool', this)"><i class="fa-solid fa-box"></i>Pool</div>`;
+                nh += `<div class="nav-btn" onclick="nav('pool', this)"><i class="fa-solid fa-box"></i>Pool</div>`;
             }
             if (role === 'ADMIN' || role === 'SUPERADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('monitor')"><i class="fa-solid fa-desktop"></i><br>Monitor</div>`;
-                navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>Monitor</div>`;
+                nh += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>Monitor</div>`;
             }
+            navHtml = nh;
         }
 
         if (role === 'RIDER') {
@@ -225,9 +250,10 @@
                 <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
             `;
             navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
+            navHtml += `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
         }
 
-        // ✅ IMPORTANT: Render menu buttons BEFORE loading data (Prevents menu disappearance if data load fails)
+        // ✅ Render menu buttons BEFORE loading data
         menu.innerHTML = menuHtml;
         menu.style.display = 'grid'; 
         nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
@@ -236,6 +262,7 @@
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             try { renderPickupList(data.pickup_points || []); } catch(e){ console.error(e); }
             try { setupPickupSelector(); } catch(e){ console.error(e); }
+            try { renderFullHistory(); } catch(e){ console.error(e); }
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){ console.error(e); }
             if (role === 'ADMIN' || role === 'SUPERADMIN') try { renderMonitor(data.monitor_jobs || []); } catch(e){ console.error(e); }
         }
@@ -247,6 +274,44 @@
     }
 
     // --- RENDER FUNCTIONS ---
+    function renderFullHistory() {
+        const list = data.full_history || [];
+        const dateMode = document.getElementById('hist-filter-date').value;
+        const userMode = document.getElementById('hist-filter-user').value;
+        const el = document.getElementById('history-list');
+        
+        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px;">ไม่มีข้อมูล</div>'; return; }
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const filtered = list.filter(j => {
+            const d = new Date(j.created_at);
+            let dateMatch = true;
+            if(dateMode === 'today') dateMatch = d >= startOfDay;
+            else if(dateMode === 'week') { const w = new Date(startOfDay); w.setDate(w.getDate()-7); dateMatch = d >= w; }
+            else if(dateMode === 'month') { const m = new Date(startOfDay); m.setMonth(m.getMonth()-1); dateMatch = d >= m; }
+            else if(dateMode === 'year') { const y = new Date(startOfDay); y.setFullYear(y.getFullYear()-1); dateMatch = d >= y; }
+            
+            let userMatch = true;
+            if(userMode !== 'all') userMatch = j.admin === userMode;
+            return dateMatch && userMatch;
+        });
+
+        if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px;">ไม่พบข้อมูลตามตัวกรอง</div>'; return; }
+
+        el.innerHTML = filtered.map(h => `
+            <div class="card" style="border-left: 4px solid ${h.status==='COMPLETED'?'#00B900':'#dc3545'};">
+                <div class="card-header">${h.bill_id} <span class="role-badge">${h.status}</span></div>
+                <div class="card-row">👤 สร้าง: ${h.admin} | 🛵 ไรเดอร์: ${h.rider}</div>
+                <div class="card-row">💰 ค่ารถ: ${h.price} ${h.extra_fee>0 ? `(+${h.extra_fee})` : ''}</div>
+                <div class="card-row">🕒 สร้าง: ${new Date(h.created_at).toLocaleString('th-TH')}</div>
+                <div class="card-row">🏁 จบ: ${h.finished_at ? new Date(h.finished_at).toLocaleString('th-TH') : '-'}</div>
+                ${h.proof ? `<div class="card-actions"><a href="${h.proof}" target="_blank" class="btn btn-outline btn-sm">รูปจบงาน</a></div>` : ''}
+            </div>
+        `).join('');
+    }
+
     function renderPickupList(list) {
         const el = document.getElementById('pickup-list');
         if(list.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ว่างเปล่า</div>'; return; }
@@ -276,15 +341,15 @@
     }
 
     function renderMonitor(list) {
-        const filtered = (data.monitor_jobs || []);
         const el = document.getElementById('monitor-list');
-        if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงาน</div>'; return; }
-        el.innerHTML = filtered.map(j => {
+        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงาน</div>'; return; }
+        el.innerHTML = list.map(j => {
             const jobDataStr = encodeURIComponent(JSON.stringify(j));
             return `
             <div class="card">
                 <div class="card-header">${j.bill_id} <span class="role-badge">${j.status}</span></div>
                 <div class="card-row">👤 Rider: ${j.rider}</div>
+                <div class="card-row">💰 ค่ารถ: ${j.price}</div>
                 <div class="card-actions">
                     ${j.status === 'COMPLETED' ? `<a href="${j.proof}" target="_blank" class="btn btn-outline btn-sm">รูปจบงาน</a>` : ''}
                     ${!['COMPLETED', 'CANCELLED'].includes(j.status) ? `<button class="btn btn-outline btn-sm" onclick="prepareEditDest('${j.job_id}', '${jobDataStr}')">แก้ปลายทาง</button>` : ''}
@@ -309,10 +374,9 @@
             statusText = '🔔 งานใหม่มาแล้ว!';
             
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
-            // Use Server Time + Time passed since load as base
             const serverTimeMs = new Date(data.server_time).getTime();
             const clientTimeMs = new Date().getTime();
-            const timeDiff = clientTimeMs - serverTimeMs; // Diff between client and server clock (approx)
+            const timeDiff = clientTimeMs - serverTimeMs;
 
             const updatedTime = new Date(job.updated_at).getTime(); 
             const expireTime = updatedTime + (timeoutSec * 1000);
@@ -326,14 +390,8 @@
             `;
 
             countdownInterval = setInterval(() => {
-                // Adjust current time using server offset
                 const nowAdjusted = new Date().getTime() - timeDiff; 
-                // Or simply trust local clock for relative countdown ifupdated_at is reliable
-                // Let's use simple local clock diff for robustness
-                const now = new Date().getTime();
-                // Note: updated_at from server is ISO.
-                
-                const diff = expireTime - now; // This assumes updated_at is roughly synced or we rely on relative time
+                const diff = expireTime - nowAdjusted;
                 
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
@@ -449,7 +507,6 @@
         }
     }
 
-    // --- CREATE JOB MODAL ---
     function submitJob() {
         const bill = document.getElementById('job-bill-id').value;
         const pid = document.getElementById('job-pickup-select').value;
@@ -476,7 +533,6 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // --- EDIT DESTINATION LOGIC ---
     function prepareEditDest(jobId, jobDataStr) {
         currentJobId = jobId;
         currentEditJobData = JSON.parse(decodeURIComponent(jobDataStr));
@@ -537,7 +593,6 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // --- SHARED MODAL HELPERS ---
     function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
     
     function confirmAction() {
@@ -563,7 +618,6 @@
         setTimeout(() => btn.innerHTML = oldText, 2000);
     }
 
-    // --- MAP LOGIC ---
     function openMap(mode) {
         mapMode = mode;
         document.getElementById('map-overlay').style.display = 'flex';
@@ -630,6 +684,11 @@
     function cancelJob(id) { const r = prompt("เหตุผล:"); if(r) sendAction('cancel_job', {job_id: id, reason: r}); }
     function confirmSOS() { if(confirm("ยืนยัน SOS?")) sendAction('sos'); }
     
+    function setupPickupSelector() {
+        const sel = document.getElementById('job-pickup-select');
+        sel.innerHTML = '<option value="">-- เลือกจุดรับ --</option>' + (data.pickup_points || []).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    }
+
     function calcDist(lat1, lon1, lat2, lon2) {
         const R = 6371; 
         const dLat = (lat2 - lat1) * Math.PI / 180;
