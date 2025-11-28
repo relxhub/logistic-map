@@ -62,8 +62,17 @@
     #map-fullscreen { flex-grow: 1; width: 100%; }
     .map-footer-bar { padding: 20px; background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); z-index: 2010; text-align: center; }
     
-    /* 🔴 FIX: Z-Index สำหรับ Google Autocomplete */
+    /* FIX: Z-Index สำหรับ Google Autocomplete */
     .pac-container { z-index: 10000 !important; font-family: 'Kanit', sans-serif; }
+
+    /* Custom Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; display: none; align-items: center; justify-content: center; }
+    .modal-box { background: white; width: 85%; max-width: 320px; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: fadeIn 0.2s; }
+    .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: var(--primary); }
+    .modal-detail { text-align: left; font-size: 14px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+    .modal-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .modal-actions { display: flex; gap: 10px; flex-direction: column; }
+    .btn-copy { background: #333; color: white; }
 
     /* BOTTOM NAV */
     .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0 25px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 900; }
@@ -180,6 +189,20 @@
         </div>
     </div>
 
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">📦 สรุปข้อมูลงาน</div>
+            <div class="modal-detail" id="modal-content"></div>
+            <div class="modal-actions">
+                <button class="btn btn-copy" onclick="copyShippingPrice()"><i class="fa-solid fa-copy"></i> คัดลอกค่าส่ง</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">แก้ไข</button>
+                    <button class="btn btn-primary" style="flex:1;" onclick="confirmCreateJob()">ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="bottom-nav" id="bottom-nav"></div>
 
 <script>
@@ -191,8 +214,11 @@
     let tempLat = null, tempLng = null;
     let map, marker, mapMode, editPickupId = null;
     let mapsLoaded = false;
-    // Config ราคาเริ่มต้น (Fallback)
     let config = { base: 40, km: 10 }; 
+    
+    // Pending State for Modal
+    let pendingJobPayload = null;
+    let pendingPriceText = "";
 
     // INIT
     try {
@@ -200,7 +226,7 @@
         const rawData = params.get('data');
         if (rawData) {
             data = JSON.parse(decodeURIComponent(rawData));
-            if(data.config) config = data.config; // รับค่า Config จาก Python
+            if(data.config) config = data.config;
         }
 
         document.getElementById('user-name').innerText = data.name || 'Guest';
@@ -351,7 +377,6 @@
         tempLat = null; tempLng = null;
     }
 
-    // 🔴 FIX: ฟังก์ชันเฉพาะสำหรับปุ่ม + (เคลียร์ค่าเก่าทิ้ง)
     function goToAddPickup() {
         editPickupId = null;
         resetPickupForm();
@@ -373,44 +398,65 @@
         const name = document.getElementById('new-pickup-name').value;
         if(!name || !tempLat) return alert('กรุณาปักหมุดและตั้งชื่อ');
         
-        // ถ้าเป็นการแก้ไข ให้ลบอันเก่าก่อน (Backend ยังไม่มี Update API แยก)
-        if(editPickupId) {
-            sendAction('delete_pickup', {id: editPickupId});
-            setTimeout(() => sendAction('save_pickup', { name, lat: tempLat, lng: tempLng }), 500);
-        } else {
-            sendAction('save_pickup', { name, lat: tempLat, lng: tempLng });
-        }
+        // FIX: ส่ง ID ไปด้วยถ้าเป็นการแก้ไข (ไม่ต้องลบแล้วสร้างใหม่)
+        const payload = { name, lat: tempLat, lng: tempLng };
+        if(editPickupId) payload.id = editPickupId;
+        
+        sendAction('save_pickup', payload);
     }
 
-    // 🔴 FIX: ระบบคำนวณราคาและสรุป (Preview) ก่อนส่ง
+    // FIX: ใช้ Custom Modal + Copy Button
     function submitJob() {
         const bill = document.getElementById('job-bill-id').value;
         const pid = document.getElementById('job-pickup-select').value;
         if(!bill || !tempLat || !pid) return alert('กรุณากรอกข้อมูลให้ครบ');
 
-        // หาจุดรับที่เลือก
         const pickup = (data.pickup_points || []).find(p => p.id === pid);
         if(!pickup) return alert('ไม่พบข้อมูลจุดรับ');
 
-        // คำนวณระยะทาง
         const dist = calcDist(pickup.lat, pickup.lng, tempLat, tempLng);
-        // คำนวณราคา
-        const price = Math.ceil(config.base + (dist * config.km));
+        const base = (data.config && data.config.base) || 40;
+        const perKm = (data.config && data.config.km) || 10;
+        const price = Math.ceil(base + (dist * perKm));
 
-        const msg = `
-📦 สรุปการสร้างงาน
------------------------
-📄 บิล: ${bill}
-📍 รับ: ${pickup.name}
-🏁 ส่ง: พิกัดที่ปักหมุด
-📏 ระยะทาง: ~${dist.toFixed(2)} กม.
-💰 ค่าส่ง: ${price} บาท
------------------------
-ยืนยันการสร้างงาน?`;
+        // เก็บ State ไว้รอส่ง
+        pendingJobPayload = { bill_id: bill, pickup_id: pid, lat: tempLat, lng: tempLng };
+        pendingPriceText = `ค่าส่ง: ${price} บาท`;
 
-        if(confirm(msg)) {
-            sendAction('create_job', { bill_id: bill, pickup_id: pid, lat: tempLat, lng: tempLng });
+        const content = `
+            <div class="modal-line"><span>📄 บิล:</span> <b>${bill}</b></div>
+            <div class="modal-line"><span>📍 รับ:</span> <span>${pickup.name}</span></div>
+            <div class="modal-line"><span>🏁 ส่ง:</span> <span>(พิกัดปักหมุด)</span></div>
+            <div class="modal-line"><span>📏 ระยะทาง:</span> <span>~${dist.toFixed(2)} กม.</span></div>
+            <hr style="margin: 5px 0; border:0; border-top:1px dashed #ddd;">
+            <div class="modal-line" style="font-size:16px; color:var(--primary);"><span>💰 ค่าส่ง:</span> <b>${price} บาท</b></div>
+        `;
+        document.getElementById('modal-content').innerHTML = content;
+        document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
+    // --- MODAL & COPY HELPERS ---
+    function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
+    
+    function confirmCreateJob() {
+        if(pendingJobPayload) {
+            sendAction('create_job', pendingJobPayload);
+            closeModal();
         }
+    }
+
+    function copyShippingPrice() {
+        const el = document.createElement('textarea');
+        el.value = pendingPriceText;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        
+        const btn = document.querySelector('.btn-copy');
+        const oldText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว';
+        setTimeout(() => btn.innerHTML = oldText, 2000);
     }
 
     // --- MAP LOGIC ---
@@ -473,7 +519,6 @@
     function showStaticMap(elemId, lat, lng) {
         const el = document.getElementById(elemId);
         el.style.display = 'block';
-        // ใช้ Google Static Maps หรือ Placeholder สี
         el.innerHTML = `<div style="width:100%; height:100%; background:#e0e0e0; display:flex; align-items:center; justify-content:center; flex-direction:column;">
             <i class="fa-solid fa-map-location-dot" style="font-size:30px; color:${elemId.includes('pickup')?'red':'blue'};"></i>
             <span style="font-size:12px; margin-top:5px;">${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
