@@ -23,14 +23,10 @@
         .role-badge { background: #e8f5e9; color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
 
         .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; border-left: 4px solid var(--primary); }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
         .card-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; margin-bottom: 4px; }
         .card-actions { margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end; }
-
-        /* GRID MENU */
         .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .menu-item { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: transform 0.1s; }
-        .menu-item:active { transform: scale(0.98); }
         .menu-item i { font-size: 28px; color: var(--primary); margin-bottom: 10px; display: block; }
 
         /* BOTTOM NAV */
@@ -39,24 +35,23 @@
         .nav-btn.active { color: var(--primary); }
         .nav-btn i { font-size: 22px; display: block; margin-bottom: 4px; }
 
-        /* FORMS & MAP */
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-family: 'Kanit'; outline: none; }
-        .btn { padding: 8px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-primary { background: var(--primary); }
-        .btn-warning { background: var(--warning); color: #333; }
-        .btn-danger { background: var(--danger); }
-        .btn-outline { background: transparent; border: 1px solid #ddd; color: #333; }
-        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-top: 10px; }
-
         /* MAP OVERLAY */
         #map-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; background: white; }
         #map { width: 100%; height: 60%; }
-        .map-tools { padding: 20px; height: 40%; background: white; border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-        .pac-container { z-index: 99999; }
+        .map-tools { padding: 20px; height: 40%; box-sizing: border-box; overflow-y: auto; position: absolute; bottom: 0; width: 100%; }
+        .map-top-bar { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; background: white; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; gap: 10px; align-items: center;}
 
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-family: 'Kanit'; outline: none; }
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background: var(--primary); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); color: #333; }
+        .btn-outline { background: transparent; border: 1px solid #ddd; color: #333; }
+        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-top: 10px; }
+        
+        /* LIST ITEM IN PICKUP VIEW */
+        #pickup-list .card { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
         .fab { position: fixed; bottom: 90px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 800; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -70,14 +65,17 @@
     </div>
 
     <div id="view-home" class="view active">
+        <h2 style="font-size:20px; margin-top:5px; margin-bottom:20px;">เมนูหลัก</h2>
         <div class="grid-menu" id="menu-container">
             </div>
     </div>
 
     <div id="view-pickup" class="view">
-        <h3>📍 จัดการจุดรับงาน</h3>
+        <h3 style="margin-top:0;">📍 จัดการจุดรับงาน</h3>
+        <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+            <button class="btn btn-primary" onclick="openMap('add_pickup')" style="font-size:14px;"><i class="fa-solid fa-plus"></i> เพิ่มใหม่</button>
+        </div>
         <div id="pickup-list"></div>
-        <div class="fab" onclick="openMap('add_pickup')"><i class="fa-solid fa-plus"></i></div>
     </div>
 
     <div id="view-pool" class="view">
@@ -93,8 +91,8 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h3>👀 มอนิเตอร์งาน</h3>
             <select id="monitor-filter" style="width:120px; margin:0;" onchange="renderMonitor()">
-                <option value="all">ทั้งหมด</option>
                 <option value="today">วันนี้</option>
+                <option value="all">ทั้งหมด</option>
             </select>
         </div>
         <div id="monitor-list"></div>
@@ -102,28 +100,26 @@
 
     <div id="view-rider" class="view">
         <h3>🛵 งานของคุณ</h3>
-        <div id="rider-job-card">
-            <div style="text-align:center; padding:40px; color:#999;">
-                <i class="fa-solid fa-mug-hot" style="font-size:40px; margin-bottom:10px;"></i><br>ยังไม่มีงานเข้าครับ
-            </div>
-        </div>
+        <div id="rider-job-card"></div>
         <button class="btn btn-danger btn-block" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S (แจ้งเหตุฉุกเฉิน)</button>
     </div>
 
     <div id="map-overlay">
-        <div id="map"></div>
-        <div class="map-tools">
-            <h3 id="map-title">ปักหมุด</h3>
-            
-            <select id="pickupSelector" style="display:none;">
-                <option value="">เลือกจุดรับพัสดุ...</option>
-            </select>
+        <div class="map-top-bar">
+            <button class="btn btn-outline" onclick="closeMap()" style="padding:10px;"><i class="fa-solid fa-arrow-left"></i></button>
+            <input id="search-box" type="text" placeholder="🔍 ค้นหาสถานที่..." style="flex-grow: 1; margin: 0;" />
+        </div>
 
-            <input id="search-box" type="text" placeholder="🔍 ค้นหาสถานที่..." />
-            <input id="extra-input" type="text" style="display:none;" /> <div style="display:flex; gap:10px;">
-                <button class="btn btn-outline" style="flex:1;" onclick="closeMap()">ยกเลิก</button>
-                <button class="btn btn-primary" style="flex:2;" id="btn-map-confirm" disabled>ยืนยัน</button>
-            </div>
+        <div id="map" style="margin-top: 60px;"></div>
+
+        <div class="map-tools">
+            <h3 id="map-title" style="margin-top:0;">ปักหมุดปลายทาง</h3>
+            
+            <select id="pickupSelector">
+                </select>
+
+            <input id="extra-input" type="text" placeholder="📝 เลขบิล / Order ID" /> 
+            <button class="btn btn-primary btn-block" id="btn-map-confirm" disabled>ยืนยัน</button>
         </div>
     </div>
 
@@ -133,64 +129,73 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        let map, marker, selectedLoc = null, mapMode = '', currentJobId = null;
+        let map, marker, selectedLoc = null, searchBox, mapMode = '', currentJobId = null;
         
-        // Parse Data
+        // Load Data
         const params = new URLSearchParams(window.location.search);
         const rawData = params.get('data');
         const data = rawData ? JSON.parse(decodeURIComponent(rawData)) : { role: 'GUEST', name: 'Guest' };
-
+        
         // Init UI
         document.getElementById('user-name').innerText = data.name;
         document.getElementById('user-id').innerText = `ID: ${data.id}`;
         document.getElementById('user-role').innerText = data.role;
-
-        // --- RENDER LOGIC ---
-        const menuContainer = document.getElementById('menu-container');
-        const navContainer = document.getElementById('bottom-nav');
-
-        // NAV: Home is always first
-        let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
-
-        if (['SUPERADMIN', 'SUPERVISOR'].includes(data.role)) {
-            menuContainer.innerHTML = `
-                <div class="menu-item" onclick="nav('pickup', null)"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับงาน</div>
-                <div class="menu-item" onclick="nav('pool', null)"><i class="fa-solid fa-layer-group"></i><br>งานใน Pool</div>
-                <div class="menu-item" onclick="prepareCreateJob()"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
-            `;
-            renderPickupList(data.pickup_points || []);
-            renderPoolList(data.pool_jobs || []);
-        } 
-        else if (data.role === 'ADMIN') {
-            menuContainer.innerHTML = `
-                <div class="menu-item" onclick="nav('monitor', null)"><i class="fa-solid fa-desktop"></i><br>มอนิเตอร์</div>
-                <div class="menu-item" onclick="prepareCreateJob()"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
-            `;
-            navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>มอนิเตอร์</div>`;
-            renderMonitor(); 
-        }
-        else if (data.role === 'RIDER') {
-            menuContainer.style.display = 'none'; // Rider เข้าหน้างานเลย
-            navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งานของคุณ</div>`;
-            renderRiderJob(data.current_job);
-            setTimeout(() => nav('rider', document.querySelectorAll('.nav-btn')[1]), 100);
-        }
-
-        navContainer.innerHTML = navHtml;
+        renderMenu(data.role);
 
         // --- RENDER HELPERS ---
-        function renderPickupList(list) {
-            document.getElementById('pickup-list').innerHTML = list.map(p => `
-                <div class="card"><div class="card-row"><i class="fa-solid fa-location-dot"></i> <b>${p.name}</b></div></div>
-            `).join('');
+        function renderMenu(role) {
+            const container = document.getElementById('menu-container');
+            const nav = document.getElementById('bottom-nav');
+            
+            let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
+
+            if (['SUPERADMIN', 'SUPERVISOR'].includes(role)) {
+                container.innerHTML = `
+                    <div class="menu-item" onclick="nav('pickup', null)"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับงาน</div>
+                    <div class="menu-item" onclick="nav('pool', null)"><i class="fa-solid fa-layer-group"></i><br>งานใน Pool</div>
+                    <div class="menu-item" onclick="openMap('create_job')"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
+                `;
+                navHtml += `<div class="nav-btn" onclick="nav('pool', this)"><i class="fa-solid fa-layer-group"></i>Pool</div>`;
+                renderPickupList(data.pickup_points || []);
+                renderPoolList(data.pool_jobs || []);
+            } 
+            else if (role === 'ADMIN') {
+                container.innerHTML = `
+                    <div class="menu-item" onclick="nav('monitor', null)"><i class="fa-solid fa-desktop"></i><br>มอนิเตอร์</div>
+                    <div class="menu-item" onclick="openMap('create_job')"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
+                `;
+                navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>มอนิเตอร์</div>`;
+                renderMonitor(); 
+            }
+            else if (role === 'RIDER') {
+                navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
+                renderRiderJob(data.current_job);
+                setTimeout(() => nav('rider', document.querySelectorAll('.nav-btn')[1]), 100);
+            }
+
+            nav.innerHTML = navHtml + `<div class="nav-btn" onclick="nav('profile', this)"><i class="fa-solid fa-user"></i>บัญชี</div>`;
         }
 
+        function renderPickupList(list) {
+            const el = document.getElementById('pickup-list');
+            if (list.length === 0) { el.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">ยังไม่มีจุดรับงานที่บันทึกไว้</div>'; return; }
+            el.innerHTML = list.map(p => `
+                <div class="card" data-id="${p.id}" style="border-left: 4px solid #3b82f6;">
+                    <div class="card-header"><b>${p.name}</b></div>
+                    <div class="card-row" style="font-size:12px; color:#999;">
+                        สร้างโดย: ${p.creator_name || 'System'}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
         function renderPoolList(list) {
             document.getElementById('pool-count').innerText = list.length + ' งาน';
             document.getElementById('pool-list').innerHTML = list.map(j => `
-                <div class="card">
-                    <div class="card-header">📝 ${j.bill_id} <span class="role-badge">PENDING</span></div>
+                <div class="card" style="border-left: 4px solid #3b82f6;">
+                    <div class="card-header">📝 ${j.bill_id} <span class="badge bg-orange">POOL</span></div>
                     <div class="card-row"><i class="fa-solid fa-store"></i> รับ: ${j.pickup}</div>
+                    <div class="card-row"><i class="fa-solid fa-location-dot"></i> ส่ง: ${j.dropoff_lat.toFixed(4)}, ${j.dropoff_lng.toFixed(4)}</div>
                     <div class="card-actions">
                         <button class="btn btn-primary" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">ปล่อยงาน</button>
                     </div>
@@ -199,15 +204,16 @@
         }
 
         function renderMonitor() {
-            const filter = document.getElementById('monitor-filter').value;
             const list = data.monitor_jobs || [];
-            // Simple Client-side filter (Today simulation)
-            const filtered = (filter === 'today') ? list.slice(0, 5) : list; // (In real app, filter by date string)
+            const el = document.getElementById('monitor-list');
+            
+            if (list.length === 0) { el.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">วันนี้ยังไม่มีงานที่สร้างไว้</div>'; return; }
 
-            document.getElementById('monitor-list').innerHTML = filtered.map(j => `
+            el.innerHTML = list.map(j => `
                 <div class="card">
-                    <div class="card-header">📝 ${j.bill_id} <span class="role-badge" style="background:${getStatusColor(j.status)}">${j.status}</span></div>
-                    <div class="card-row"><i class="fa-solid fa-user"></i> ${j.rider || '-'}</div>
+                    <div class="card-header">📝 ${j.bill_id} <span class="badge" style="background:${getStatusColor(j.status)}">${j.status}</span></div>
+                    <div class="card-row"><i class="fa-solid fa-user"></i> Rider: ${j.rider}</div>
+                    <div class="card-row"><i class="fa-solid fa-clock"></i> สร้างเมื่อ: ${j.created_at}</div>
                     <div class="card-actions">
                         ${j.status !== 'COMPLETED' && j.status !== 'CANCELLED' ? 
                             `<button class="btn btn-outline" onclick="editDest('${j.job_id}')">✏️ แก้ปลายทาง</button>` : ''}
@@ -220,43 +226,43 @@
 
         function renderRiderJob(job) {
             const el = document.getElementById('rider-job-card');
-            if (!job) return;
+            if (!job || job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+                el.innerHTML = `<div class="card" style="text-align:center; padding:30px;">🛵 พร้อมรับงานใหม่</div>`;
+                return;
+            }
 
             let actions = '';
             // Flow: ASSIGNED -> PICKED_UP -> COMPLETED
             if (job.status === 'ASSIGNED') {
                 actions = `
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary btn-block">🗺️ นำทางไปจุดรับ</a>
-                    <button class="btn btn-warning btn-block" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับพัสดุแล้ว</button>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=$${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-warning btn-block" style="margin-bottom:10px;"><i class="fa-solid fa-map-location-dot"></i> ไปรับพัสดุ</a>
+                    <button class="btn btn-primary btn-block" onclick="updateStatus('PICKED_UP', '${job.job_id}')"><i class="fa-solid fa-box"></i> รับพัสดุแล้ว</button>
                 `;
             } else if (job.status === 'PICKED_UP') {
                 actions = `
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary btn-block">🗺️ นำทางไปจุดส่ง</a>
-                    <button class="btn btn-primary btn-block" onclick="reqFinish('${job.job_id}')">📸 ส่งสำเร็จ (ถ่ายรูป)</button>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=$${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-warning btn-block" style="margin-bottom:10px;"><i class="fa-solid fa-flag"></i> ไปจุดหมายปลายทาง</a>
+                    <button class="btn btn-primary btn-block" onclick="reqFinish('${job.job_id}')"><i class="fa-solid fa-camera"></i> ส่งสำเร็จ (ถ่ายรูป)</button>
                 `;
             }
 
             el.innerHTML = `
                 <div class="card" style="border-left: 5px solid #00B900;">
-                    <div class="card-header" style="font-size:20px;">📝 ${job.bill_id}</div>
-                    <div class="card-row"><i class="fa-solid fa-store"></i> <b>รับ:</b> ${job.pickup_name}</div>
-                    <div class="card-row"><i class="fa-solid fa-flag-checkered"></i> <b>ส่ง:</b> ปลายทางลูกค้า</div>
+                    <div class="card-header">📝 ${job.bill_id} <span class="badge bg-warning">${job.status}</span></div>
                     <div class="card-row"><i class="fa-solid fa-money-bill"></i> <b>ค่าเที่ยว:</b> ${job.price} บาท</div>
+                    <div class="card-row"><i class="fa-solid fa-location-dot"></i> <b>รับ:</b> ${job.pickup_name}</div>
                     <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
                     ${actions}
-                    <button class="btn btn-outline btn-block" style="margin-top:10px; color:red; border-color:red;" onclick="cancelJob('${job.job_id}')">❌ ยกเลิกงาน</button>
+                    <button class="btn btn-danger btn-block" onclick="cancelJob('${job.job_id}')"><i class="fa-solid fa-xmark"></i> ยกเลิกงาน</button>
                 </div>
             `;
         }
 
-        // --- ACTIONS ---
+        // --- NAVIGATION & MAP SYSTEM ---
         function nav(viewId, el) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
-            if(el) {
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                el.classList.add('active');
-            }
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            if(el) el.classList.add('active');
         }
 
         function openMap(mode, jobId = null) {
@@ -264,79 +270,54 @@
             currentJobId = jobId;
             document.getElementById('map-overlay').style.display = 'block';
             
-            // Reset UI elements
-            document.getElementById('pickupSelector').style.display = 'none';
-            document.getElementById('extra-input').style.display = 'none';
+            const selector = document.getElementById('pickupSelector');
+            const extraInput = document.getElementById('extra-input');
+            const mapTitle = document.getElementById('map-title');
+
+            // Set visibility based on mode
+            selector.style.display = (mode === 'create_job') ? 'block' : 'none';
+            extraInput.style.display = (mode !== 'edit_dest') ? 'block' : 'none'; 
             
+            // Set titles and placeholders
             if (mode === 'add_pickup') {
-                document.getElementById('map-title').innerText = "เพิ่มจุดรับใหม่";
-                const inp = document.getElementById('extra-input');
-                inp.style.display = 'block';
-                inp.placeholder = "ตั้งชื่อจุดรับ (เช่น Warehouse A)";
+                mapTitle.innerText = "📍 บันทึกจุดรับพัสดุใหม่";
+                extraInput.placeholder = "ตั้งชื่อจุดรับ (เช่น Warehouse A)";
+                extraInput.value = '';
             } else if (mode === 'create_job') {
-                document.getElementById('map-title').innerText = "สร้างงานใหม่";
-                const sel = document.getElementById('pickupSelector');
-                sel.style.display = 'block';
+                mapTitle.innerText = "สร้างงานใหม่ (ปักหมุดปลายทาง)";
+                extraInput.placeholder = "📝 เลขบิล / Order ID";
+                extraInput.value = '';
                 // Populate pickup dropdown
-                sel.innerHTML = (data.pickup_points || []).map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
-                
-                const inp = document.getElementById('extra-input');
-                inp.style.display = 'block';
-                inp.placeholder = "📝 เลขบิล / Order ID";
+                selector.innerHTML = (data.pickup_points || []).map((p, i) => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="0">⚠️ ไม่มีจุดรับ</option>';
             } else if (mode === 'edit_dest') {
-                document.getElementById('map-title').innerText = "แก้ไขปลายทาง";
+                mapTitle.innerText = "✏️ แก้ไขปลายทาง";
+                // Show current job name for context
             }
 
             if (!map) initMap();
         }
 
-        function prepareCreateJob() { openMap('create_job'); }
-        function editDest(jobId) { openMap('edit_dest', jobId); }
         function closeMap() { document.getElementById('map-overlay').style.display = 'none'; }
 
-        function confirmSOS() {
-            if(confirm("🚨 คุณแน่ใจหรือไม่ที่จะกด S.O.S? \nบัญชีของคุณจะถูกระงับทันที!")) {
-                sendAction('sos');
-            }
-        }
-
-        function reqFinish(jobId) {
-            sendAction('req_finish', { job_id: jobId });
-            tg.close();
-        }
-
-        function cancelJob(jobId) {
-            const reason = prompt("กรุณาระบุเหตุผลการยกเลิก:");
-            if(reason) sendAction('cancel_job', { job_id: jobId, reason: reason });
-        }
-
-        function sendAction(action, payload = {}) {
-            tg.sendData(JSON.stringify({ action: action, ...payload }));
-        }
-
-        function getStatusColor(s) {
-            if(s === 'COMPLETED') return '#e8f5e9';
-            if(s === 'CANCELLED') return '#f8d7da';
-            return '#fff3cd';
-        }
-
-        // --- MAP CORE ---
         function initMap() {
+            const bangkok = { lat: 13.7563, lng: 100.5018 };
             map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 15, center: { lat: 13.7563, lng: 100.5018 },
-                disableDefaultUI: true, gestureHandling: "greedy"
+                zoom: 15, center: bangkok, disableDefaultUI: true, gestureHandling: "greedy"
             });
+            
+            // Search Bar Logic (Autocomplete)
             const input = document.getElementById("search-box");
-            const ac = new google.maps.places.Autocomplete(input);
-            ac.bindTo("bounds", map);
-            ac.addListener("place_changed", () => {
-                const p = ac.getPlace();
-                if (p.geometry) {
-                    if (p.geometry.viewport) map.fitBounds(p.geometry.viewport);
-                    else { map.setCenter(p.geometry.location); map.setZoom(17); }
-                    placeMarker(p.geometry.location);
+            const autocomplete = new google.maps.places.Autocomplete(input);
+            autocomplete.bindTo("bounds", map);
+            autocomplete.addListener("place_changed", () => {
+                const place = autocomplete.getPlace();
+                if (place.geometry) {
+                    if (place.geometry.viewport) map.fitBounds(place.geometry.viewport);
+                    else { map.setCenter(place.geometry.location); map.setZoom(17); }
+                    placeMarker(place.geometry.location);
                 }
             });
+
             map.addListener("click", (e) => placeMarker(e.latLng));
         }
 
@@ -347,23 +328,62 @@
             document.getElementById('btn-map-confirm').disabled = false;
         }
 
+        // --- CORE ACTIONS ---
         document.getElementById('btn-map-confirm').addEventListener('click', () => {
             if (!selectedLoc) return;
             const extra = document.getElementById('extra-input').value;
+            const selector = document.getElementById('pickupSelector');
 
             if (mapMode === 'add_pickup') {
                 if(!extra) return alert('กรุณาใส่ชื่อจุดรับ');
                 sendAction('save_pickup', { name: extra, ...selectedLoc });
             } else if (mapMode === 'create_job') {
                 if(!extra) return alert('กรุณาใส่เลขบิล');
-                const pIndex = document.getElementById('pickupSelector').value;
-                sendAction('create_job', { bill_id: extra, pickup_index: parseInt(pIndex), ...selectedLoc });
+                const pId = selector.value;
+                sendAction('create_job', { bill_id: extra, pickup_id: pId, ...selectedLoc }); // ส่ง ID ไปแทน Index
             } else if (mapMode === 'edit_dest') {
                 sendAction('edit_destination', { job_id: currentJobId, ...selectedLoc });
             }
             closeMap();
         });
 
+        function editDest(jobId) { openMap('edit_dest', jobId); }
+        function updateStatus(status, jobId) { sendAction('rider_update', { status: status, job_id: jobId }); }
+        function reqFinish(jobId) { sendAction('req_finish', { job_id: jobId }); tg.close(); }
+        
+        function cancelJob(jobId) {
+            const reason = prompt("ระบุเหตุผลการยกเลิก:");
+            if (reason) sendAction('cancel_job', { job_id: jobId, reason: reason });
+        }
+
+        function confirmSOS() {
+            if(confirm("🚨 คุณแน่ใจหรือไม่ที่จะกด S.O.S? \nบัญชีของคุณจะถูกระงับทันที!")) {
+                sendAction('sos');
+            }
+        }
+
+        function getStatusColor(s) {
+            if(s === 'COMPLETED') return '#e8f5e9';
+            if(s === 'CANCELLED') return '#f8d7da';
+            if(s === 'ASSIGNED') return '#fff3cd';
+            if(s === 'PENDING_POOL') return '#fbe9e7';
+            return '#ccc';
+        }
+
+        function sendAction(action, payload = {}) {
+            tg.sendData(JSON.stringify({ action: action, ...payload }));
+        }
+
+        // Init App
+        document.addEventListener('DOMContentLoaded', () => {
+            if (data.role === 'RIDER' && data.current_job) {
+                nav('rider', document.querySelectorAll('.nav-btn')[1]);
+            } else if (data.role === 'RIDER') {
+                nav('rider', document.querySelectorAll('.nav-btn')[1]);
+            } else {
+                nav('home', document.querySelectorAll('.nav-btn')[0]);
+            }
+        });
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
 </body>
