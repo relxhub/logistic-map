@@ -51,11 +51,11 @@
         
         /* LIST ITEM IN PICKUP VIEW */
         #pickup-list .card { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
-        .fab { position: fixed; bottom: 90px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 800; }
     </style>
 </head>
 <body>
 
+    <!-- HEADER -->
     <div class="header">
         <div class="user-info">
             <h1 id="user-name">Loading...</h1>
@@ -64,12 +64,16 @@
         <div class="role-badge" id="user-role">...</div>
     </div>
 
+    <!-- === VIEW 1: HOME (MENU) === -->
     <div id="view-home" class="view active">
         <h2 style="font-size:20px; margin-top:5px; margin-bottom:20px;">เมนูหลัก</h2>
         <div class="grid-menu" id="menu-container">
-            </div>
+            <!-- Menus injected by JS -->
+        </div>
+        <button class="btn btn-danger btn-block" style="margin-top:50px;" onclick="confirmSOS()">🚨 S.O.S (แจ้งเหตุฉุกเฉิน)</button>
     </div>
 
+    <!-- === VIEW 2: PICKUP POINTS (SuperAdmin/Supervisor) === -->
     <div id="view-pickup" class="view">
         <h3 style="margin-top:0;">📍 จัดการจุดรับงาน</h3>
         <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
@@ -78,6 +82,7 @@
         <div id="pickup-list"></div>
     </div>
 
+    <!-- === VIEW 3: POOL (SuperAdmin/Supervisor) === -->
     <div id="view-pool" class="view">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3>📦 งานใน Pool</h3>
@@ -87,6 +92,7 @@
         <button class="btn btn-primary btn-block" style="position:fixed; bottom:90px; left:5%; width:90%;" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button>
     </div>
 
+    <!-- === VIEW 4: MONITOR (Admin) === -->
     <div id="view-monitor" class="view">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h3>👀 มอนิเตอร์งาน</h3>
@@ -98,12 +104,13 @@
         <div id="monitor-list"></div>
     </div>
 
+    <!-- === VIEW 5: RIDER JOB (Active Job) === -->
     <div id="view-rider" class="view">
         <h3>🛵 งานของคุณ</h3>
         <div id="rider-job-card"></div>
-        <button class="btn btn-danger btn-block" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S (แจ้งเหตุฉุกเฉิน)</button>
     </div>
 
+    <!-- === MAP OVERLAY === -->
     <div id="map-overlay">
         <div class="map-top-bar">
             <button class="btn btn-outline" onclick="closeMap()" style="padding:10px;"><i class="fa-solid fa-arrow-left"></i></button>
@@ -115,14 +122,18 @@
         <div class="map-tools">
             <h3 id="map-title" style="margin-top:0;">ปักหมุดปลายทาง</h3>
             
+            <!-- กรณีสร้างงาน: เลือกจุดรับได้ -->
             <select id="pickupSelector">
-                </select>
+                <!-- Populated by JS -->
+            </select>
 
+            <!-- ใช้เป็นเลขบิล หรือ ชื่อจุดรับ -->
             <input id="extra-input" type="text" placeholder="📝 เลขบิล / Order ID" /> 
             <button class="btn btn-primary btn-block" id="btn-map-confirm" disabled>ยืนยัน</button>
         </div>
     </div>
 
+    <!-- BOTTOM NAV -->
     <div class="bottom-nav" id="bottom-nav"></div>
 
     <script>
@@ -143,6 +154,15 @@
         renderMenu(data.role);
 
         // --- RENDER HELPERS ---
+        function getStatusColor(s) {
+            if(s === 'COMPLETED') return '#e8f5e9';
+            if(s === 'CANCELLED') return '#f8d7da';
+            if(s === 'ASSIGNED' || s === 'PICKED_UP') return '#fff3cd';
+            if(s === 'PENDING_POOL' || s === 'QUEUED') return '#fbe9e7';
+            return '#ccc';
+        }
+
+        // --- CORE RENDER FUNCTIONS ---
         function renderMenu(role) {
             const container = document.getElementById('menu-container');
             const nav = document.getElementById('bottom-nav');
@@ -183,7 +203,7 @@
                 <div class="card" data-id="${p.id}" style="border-left: 4px solid #3b82f6;">
                     <div class="card-header"><b>${p.name}</b></div>
                     <div class="card-row" style="font-size:12px; color:#999;">
-                        สร้างโดย: ${p.creator_name || 'System'}
+                        สร้างโดย: ID ${p.creator_name || 'System'}
                     </div>
                 </div>
             `).join('');
@@ -209,19 +229,22 @@
             
             if (list.length === 0) { el.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">วันนี้ยังไม่มีงานที่สร้างไว้</div>'; return; }
 
-            el.innerHTML = list.map(j => `
+            el.innerHTML = list.map(j => {
+                const proofButton = j.status === 'COMPLETED' ? `<a href="${j.proof}" target="_blank" class="btn btn-primary">ดูรูปจบงาน</a>` : '';
+                const editButton = j.status !== 'COMPLETED' && j.status !== 'CANCELLED' ? `<button class="btn btn-outline" onclick="editDest('${j.job_id}')">✏️ แก้ปลายทาง</button>` : '';
+
+                return `
                 <div class="card">
                     <div class="card-header">📝 ${j.bill_id} <span class="badge" style="background:${getStatusColor(j.status)}">${j.status}</span></div>
                     <div class="card-row"><i class="fa-solid fa-user"></i> Rider: ${j.rider}</div>
                     <div class="card-row"><i class="fa-solid fa-clock"></i> สร้างเมื่อ: ${j.created_at}</div>
                     <div class="card-actions">
-                        ${j.status !== 'COMPLETED' && j.status !== 'CANCELLED' ? 
-                            `<button class="btn btn-outline" onclick="editDest('${j.job_id}')">✏️ แก้ปลายทาง</button>` : ''}
-                        ${j.status === 'COMPLETED' ? 
-                            `<a href="${j.proof}" target="_blank" class="btn btn-primary">ดูรูปจบงาน</a>` : ''}
+                        ${editButton}
+                        ${proofButton}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function renderRiderJob(job) {
@@ -232,7 +255,6 @@
             }
 
             let actions = '';
-            // Flow: ASSIGNED -> PICKED_UP -> COMPLETED
             if (job.status === 'ASSIGNED') {
                 actions = `
                     <a href="https://www.google.com/maps/dir/?api=1&destination=$${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-warning btn-block" style="margin-bottom:10px;"><i class="fa-solid fa-map-location-dot"></i> ไปรับพัสดุ</a>
@@ -273,12 +295,13 @@
             const selector = document.getElementById('pickupSelector');
             const extraInput = document.getElementById('extra-input');
             const mapTitle = document.getElementById('map-title');
-
-            // Set visibility based on mode
-            selector.style.display = (mode === 'create_job') ? 'block' : 'none';
-            extraInput.style.display = (mode !== 'edit_dest') ? 'block' : 'none'; 
+            const searchBox = document.getElementById('search-box');
             
-            // Set titles and placeholders
+            // UI Setup
+            extraInput.style.display = (mode !== 'edit_dest') ? 'block' : 'none'; 
+            selector.style.display = (mode === 'create_job') ? 'block' : 'none';
+            searchBox.style.display = 'block'; // Search always visible on map
+
             if (mode === 'add_pickup') {
                 mapTitle.innerText = "📍 บันทึกจุดรับพัสดุใหม่";
                 extraInput.placeholder = "ตั้งชื่อจุดรับ (เช่น Warehouse A)";
@@ -291,7 +314,7 @@
                 selector.innerHTML = (data.pickup_points || []).map((p, i) => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="0">⚠️ ไม่มีจุดรับ</option>';
             } else if (mode === 'edit_dest') {
                 mapTitle.innerText = "✏️ แก้ไขปลายทาง";
-                // Show current job name for context
+                extraInput.style.display = 'none'; 
             }
 
             if (!map) initMap();
@@ -340,7 +363,9 @@
             } else if (mapMode === 'create_job') {
                 if(!extra) return alert('กรุณาใส่เลขบิล');
                 const pId = selector.value;
-                sendAction('create_job', { bill_id: extra, pickup_id: pId, ...selectedLoc }); // ส่ง ID ไปแทน Index
+                if(pId === '0') return alert('กรุณาเพิ่มจุดรับพัสดุในเมนูตั้งจุดรับงานก่อน');
+
+                sendAction('create_job', { bill_id: extra, pickup_id: pId, ...selectedLoc }); 
             } else if (mapMode === 'edit_dest') {
                 sendAction('edit_destination', { job_id: currentJobId, ...selectedLoc });
             }
@@ -362,28 +387,9 @@
             }
         }
 
-        function getStatusColor(s) {
-            if(s === 'COMPLETED') return '#e8f5e9';
-            if(s === 'CANCELLED') return '#f8d7da';
-            if(s === 'ASSIGNED') return '#fff3cd';
-            if(s === 'PENDING_POOL') return '#fbe9e7';
-            return '#ccc';
-        }
-
         function sendAction(action, payload = {}) {
             tg.sendData(JSON.stringify({ action: action, ...payload }));
         }
-
-        // Init App
-        document.addEventListener('DOMContentLoaded', () => {
-            if (data.role === 'RIDER' && data.current_job) {
-                nav('rider', document.querySelectorAll('.nav-btn')[1]);
-            } else if (data.role === 'RIDER') {
-                nav('rider', document.querySelectorAll('.nav-btn')[1]);
-            } else {
-                nav('home', document.querySelectorAll('.nav-btn')[0]);
-            }
-        });
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
 </body>
