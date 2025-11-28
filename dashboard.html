@@ -345,17 +345,48 @@
 
     function renderRiderJob(job) {
         const el = document.getElementById('rider-job-card');
-        if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">🛵 รอรับงาน...</div>'; return; }
+        if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">🛵 ว่าง (รอรับงาน...)</div>'; return; }
 
         let btns = '';
-        if(job.status === 'ASSIGNED') {
-            btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">ไปจุดรับ</a>
-                    <button class="btn btn-warning" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">รับของแล้ว</button>`;
-        } else if (job.status === 'PICKED_UP') {
-            btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">ไปจุดส่ง</a>
-                    <button class="btn btn-primary" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">ถ่ายรูปส่งงาน</button>`;
+        let statusColor = '#00B900'; // สีเขียว default
+        let statusText = 'งานของคุณ';
+
+        // 1. สถานะ OFFERED (งานเข้าใหม่ รอคนกดรับ)
+        if (job.status === 'OFFERED') {
+            statusColor = '#ffc107'; // สีเหลือง
+            statusText = '🔔 งานใหม่มาแล้ว!';
+            btns = `
+                <div style="background:#fff3cd; color:#856404; padding:10px; border-radius:8px; margin-bottom:10px; font-size:13px;">
+                    กรุณากดรับงานภายในเวลาที่กำหนด
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" onclick="sendAction('accept_offer', {job_id:'${job.job_id}'})">✅ รับงานนี้</button>
+                    <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
+                </div>
+            `;
+        } 
+        // 2. สถานะ ASSIGNED (รับแล้ว กำลังไปรับของ)
+        else if(job.status === 'ASSIGNED') {
+            btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">🗺️ นำทางไปจุดรับ</a>
+                    <button class="btn btn-warning" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับของแล้ว</button>
+                    <button class="btn btn-danger" style="margin-top:10px;" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button>`;
+        } 
+        // 3. สถานะ PICKED_UP (รับของแล้ว กำลังไปส่ง)
+        else if (job.status === 'PICKED_UP') {
+            btns = `<a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">🏁 นำทางไปจุดส่ง</a>
+                    <button class="btn btn-primary" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">📸 ถ่ายรูปส่งงาน</button>`;
         }
-        el.innerHTML = `<div class="card" style="border-left:5px solid #00B900;"><h2>${job.bill_id}</h2><p>💰 ${job.price} ฿ | 📍 รับ: ${job.pickup_name}</p><hr>${btns}<button class="btn btn-danger" style="margin-top:10px;" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button></div>`;
+
+        el.innerHTML = `
+            <div class="card" style="border-left:5px solid ${statusColor};">
+                <h2 style="color:${statusColor}">${statusText}</h2>
+                <h3>${job.bill_id}</h3>
+                <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b></p>
+                <p>📍 รับ: ${job.pickup_name}</p>
+                <hr>
+                ${btns}
+            </div>
+        `;
     }
 
     function setupPickupSelector() {
