@@ -71,6 +71,7 @@
     .modal-actions { display: flex; gap: 10px; flex-direction: column; }
     .btn-copy { background: #333; color: white; }
 
+    /* BOTTOM NAV */
     .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0 25px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 900; }
     .nav-btn { text-align: center; color: #ccc; font-size: 10px; cursor: pointer; flex: 1; }
     .nav-btn.active { color: var(--primary); }
@@ -87,12 +88,14 @@
         <div class="role-badge" id="user-role">...</div>
     </div>
 
+    <!-- === HOME === -->
     <div id="view-home" class="view active">
         <h2 style="font-size:18px; margin:0 0 15px 0;">เมนูหลัก</h2>
         <div class="grid-menu" id="menu-container"></div>
         <button class="btn btn-danger" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S</button>
     </div>
 
+    <!-- === OTHER VIEWS (Standard) === -->
     <div id="view-pickup" class="view">
         <h3>📍 จัดการจุดรับงาน</h3>
         <div id="pickup-list"></div>
@@ -139,6 +142,7 @@
         <div class="map-footer-bar"><div id="map-status-text">เลื่อนหมุด</div><button class="btn btn-primary" id="btn-confirm-loc" disabled>📍 ยืนยัน</button></div>
     </div>
 
+    <!-- CONFIRM MODAL (GENERAL) -->
     <div id="confirm-modal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-title" id="modal-title">📦 สรุปข้อมูลงาน</div>
@@ -179,6 +183,11 @@
         if (rawData) {
             data = JSON.parse(decodeURIComponent(rawData));
             if(data.config) config = data.config;
+            
+            // Failsafe: Clean Role String (Just in case backend sends 'Role.ADMIN')
+            if(data.role && data.role.startsWith('Role.')) {
+                data.role = data.role.replace('Role.', '');
+            }
         }
 
         document.getElementById('user-name').innerText = data.name || 'Guest';
@@ -194,6 +203,7 @@
         let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
         let menuHtml = '';
 
+        // Generate HTML for buttons first
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             menuHtml += `
                 <div class="menu-item" onclick="goToPage('create-job')"><i class="fa-solid fa-plus-circle"></i><br>สร้างงาน</div>
@@ -202,14 +212,11 @@
             if (role !== 'ADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('pool')"><i class="fa-solid fa-layer-group"></i><br>Pool</div>`;
                 navHtml += `<div class="nav-btn" onclick="nav('pool', this)"><i class="fa-solid fa-box"></i>Pool</div>`;
-                renderPoolList(data.pool_jobs || []);
             }
             if (role === 'ADMIN' || role === 'SUPERADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('monitor')"><i class="fa-solid fa-desktop"></i><br>Monitor</div>`;
                 navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>Monitor</div>`;
-                renderMonitor(data.monitor_jobs || []);
             }
-            setupPickupSelector();
         }
 
         if (role === 'RIDER') {
@@ -218,14 +225,25 @@
                 <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
             `;
             navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
-            renderRiderJob(data.current_job);
-            renderHistory(data.history || []);
         }
 
+        // ✅ IMPORTANT: Render menu buttons BEFORE loading data (Prevents menu disappearance if data load fails)
         menu.innerHTML = menuHtml;
         menu.style.display = 'grid'; 
-        renderPickupList(data.pickup_points || []);
         nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
+
+        // Now load dependent data safely
+        if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
+            try { renderPickupList(data.pickup_points || []); } catch(e){ console.error(e); }
+            try { setupPickupSelector(); } catch(e){ console.error(e); }
+            if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){ console.error(e); }
+            if (role === 'ADMIN' || role === 'SUPERADMIN') try { renderMonitor(data.monitor_jobs || []); } catch(e){ console.error(e); }
+        }
+        
+        if (role === 'RIDER') {
+            try { renderRiderJob(data.current_job); } catch(e){ console.error(e); }
+            try { renderHistory(data.history || []); } catch(e){ console.error(e); }
+        }
     }
 
     // --- RENDER FUNCTIONS ---
@@ -244,11 +262,14 @@
     }
 
     function renderPoolList(list) {
+        const el = document.getElementById('pool-list');
+        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; return; }
         document.getElementById('pool-count').innerText = list.length;
-        document.getElementById('pool-list').innerHTML = list.map(j => `
+        el.innerHTML = list.map(j => `
             <div class="card" style="border-left:4px solid #ffc107;">
                 <div class="card-header">📝 ${j.bill_id}</div>
                 <div class="card-row">📍 รับ: ${j.pickup}</div>
+                <div class="card-row">🏁 ส่ง: ${j.dropoff_lat.toFixed(4)}, ${j.dropoff_lng.toFixed(4)}</div>
                 <div class="card-actions"><button class="btn btn-primary btn-sm" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">ปล่อยงาน</button></div>
             </div>
         `).join('');
@@ -259,7 +280,6 @@
         const el = document.getElementById('monitor-list');
         if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงาน</div>'; return; }
         el.innerHTML = filtered.map(j => {
-            // เก็บข้อมูลงานไว้ใน attribute เพื่อดึงมาใช้ตอนแก้ปลายทาง
             const jobDataStr = encodeURIComponent(JSON.stringify(j));
             return `
             <div class="card">
@@ -288,15 +308,14 @@
             statusColor = '#ffc107'; 
             statusText = '🔔 งานใหม่มาแล้ว!';
             
-            // ใช้ UpdatedAt จาก Server เป็นฐาน
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
+            // Use Server Time + Time passed since load as base
+            const serverTimeMs = new Date(data.server_time).getTime();
+            const clientTimeMs = new Date().getTime();
+            const timeDiff = clientTimeMs - serverTimeMs; // Diff between client and server clock (approx)
+
             const updatedTime = new Date(job.updated_at).getTime(); 
-            // คำนวณเวลาหมดอายุ: updatedTime + timeout
             const expireTime = updatedTime + (timeoutSec * 1000);
-            
-            // ต้องเทียบกับ Server Time ที่ส่งมา เพื่อกันเรื่อง Timezone ของเครื่อง Client
-            // แต่เนื่องจาก JS run บนเครื่อง Client เราจะใช้ diff ของ server time กับ local time มาช่วย adjust ก็ได้
-            // หรือแบบง่าย: นับถอยหลังตาม expireTime ที่คำนวณได้เลย (โดยหวังว่า client time ใกล้เคียง server time)
             
             extraHtml = `<div id="job-countdown" style="text-align:center; font-size:24px; font-weight:bold; color:#d9534f; margin:10px 0;">...</div>`;
             btns = `
@@ -307,12 +326,18 @@
             `;
 
             countdownInterval = setInterval(() => {
+                // Adjust current time using server offset
+                const nowAdjusted = new Date().getTime() - timeDiff; 
+                // Or simply trust local clock for relative countdown ifupdated_at is reliable
+                // Let's use simple local clock diff for robustness
                 const now = new Date().getTime();
-                const diff = expireTime - now;
+                // Note: updated_at from server is ISO.
+                
+                const diff = expireTime - now; // This assumes updated_at is roughly synced or we rely on relative time
+                
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
                     document.getElementById('job-countdown').innerText = "หมดเวลา!";
-                    // Reload เพื่อเคลียร์งานออก
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
                     const s = Math.floor(diff / 1000);
@@ -378,6 +403,13 @@
         }
     }
 
+    function goToAddPickup() {
+        editPickupId = null;
+        resetPickupForm();
+        goToPage('add-pickup');
+        document.getElementById('pickup-form-title').innerText = "➕ เพิ่มจุดรับใหม่";
+    }
+
     function backToMain() { nav('home'); }
 
     // --- FORM ACTIONS ---
@@ -394,13 +426,6 @@
         document.getElementById('job-pickup-select').value = '';
         document.getElementById('preview-job').innerHTML = '<div class="map-preview-placeholder">แตะเพื่อปักหมุดปลายทาง</div>';
         tempLat = null; tempLng = null;
-    }
-
-    function goToAddPickup() {
-        editPickupId = null;
-        resetPickupForm();
-        goToPage('add-pickup');
-        document.getElementById('pickup-form-title').innerText = "➕ เพิ่มจุดรับใหม่";
     }
 
     function editPickup(id, name, lat, lng) {
@@ -436,7 +461,7 @@
 
         modalActionType = 'create';
         pendingPayload = { bill_id: bill, pickup_id: pid, lat: tempLat, lng: tempLng };
-        pendingCopyText = `ค่าจัดส่ง : ${price} บาท\nรวมค่าจัดส่ง : ${price} บาท`; // Format ปกติ
+        pendingCopyText = `ค่าจัดส่ง : ${price} บาท\nรวมค่าจัดส่ง : ${price} บาท`; 
 
         const content = `
             <div class="modal-line"><span>📄 บิล:</span> <b>${bill}</b></div>
@@ -451,18 +476,16 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // --- EDIT DESTINATION LOGIC (NEW) ---
+    // --- EDIT DESTINATION LOGIC ---
     function prepareEditDest(jobId, jobDataStr) {
         currentJobId = jobId;
         currentEditJobData = JSON.parse(decodeURIComponent(jobDataStr));
         openMap('edit_dest');
     }
 
-    // ฟังก์ชันคำนวณและแสดง Modal ยืนยันราคาใหม่
     function confirmEditDestPreview() {
         if (!currentEditJobData || !tempLat) return;
 
-        // คำนวณราคาใหม่ (Client Side Estimate)
         const oldPrice = parseFloat(currentEditJobData.price);
         const pickupLat = currentEditJobData.pickup_lat;
         const pickupLng = currentEditJobData.pickup_lng;
@@ -476,16 +499,14 @@
         let priceDetailHtml = '';
 
         if (fee > 0) {
-            // Logic: ถ้าไกลกว่าเดิมใช้ราคาใหม่, ใกล้กว่าใช้ราคาเดิม + fee
             finalPrice = (newPurePrice > oldPrice) ? (newPurePrice + fee) : (oldPrice + fee);
-            
             pendingCopyText = `ค่าจัดส่ง : ${finalPrice - fee} บาท\nค่าเปลี่ยนที่อยู่ : ${fee} บาท\nรวมค่าจัดส่ง : ${finalPrice} บาท`;
             
             priceDetailHtml = `
                 <div class="modal-line"><span>💵 ค่าส่งเดิม:</span> <span>${oldPrice} บาท</span></div>
                 <div class="modal-line"><span>📏 ระยะใหม่:</span> <span>~${newDist.toFixed(2)} กม.</span></div>
                 <div class="modal-line"><span>🛵 ค่าส่งตามระยะใหม่:</span> <span>${newPurePrice} บาท</span></div>
-                <div class="modal-line" style="color:${config.primary}"><span>➕ ค่าเปลี่ยนที่อยู่:</span> <b>${fee} บาท</b></div>
+                <div class="modal-line" style="color:${config.primary || 'green'}"><span>➕ ค่าเปลี่ยนที่อยู่:</span> <b>${fee} บาท</b></div>
                 <hr style="margin: 5px 0;">
                 <div class="modal-line" style="font-size:16px; color:var(--primary);"><span>💰 ยอดรวมใหม่:</span> <b>${finalPrice} บาท</b></div>
             `;
@@ -592,7 +613,6 @@
             document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
             showStaticMap('preview-job', tempLat, tempLng);
         } else if (mapMode === 'edit_dest') {
-            // เรียกฟังก์ชัน Preview ราคา แทนการส่งทันที
             confirmEditDestPreview();
         }
     });
