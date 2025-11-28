@@ -9,255 +9,362 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root {
-            --primary: #00B900; /* สีเขียวแบบ LINE */
-            --bg: #F5F5F5;
-            --card-bg: #FFFFFF;
-            --text-main: #1C1C1E;
-            --text-sub: #8E8E93;
-            --shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-        body { margin: 0; padding: 0; font-family: 'Kanit', sans-serif; background-color: var(--bg); color: var(--text-main); -webkit-tap-highlight-color: transparent; padding-bottom: 80px; }
+        :root { --primary: #00B900; --danger: #dc3545; --warning: #ffc107; --bg: #F5F5F5; --card: #FFF; }
+        body { margin: 0; padding: 0; font-family: 'Kanit', sans-serif; background: var(--bg); padding-bottom: 80px; -webkit-tap-highlight-color: transparent; }
         
-        /* --- HEADER --- */
-        .header { background: var(--primary); padding: 20px 20px 40px 20px; border-radius: 0 0 20px 20px; color: white; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .header p { margin: 5px 0 0; font-weight: 300; opacity: 0.9; }
-        
-        /* --- TAB CONTENT --- */
-        .tab-content { display: none; padding: 0 15px; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
-        
-        /* --- CARDS & STATS --- */
-        .stats-container { display: flex; gap: 10px; margin-top: -30px; margin-bottom: 20px; }
-        .stat-card { flex: 1; background: white; padding: 15px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; }
-        .stat-val { font-size: 20px; font-weight: bold; color: var(--primary); }
-        .stat-label { font-size: 12px; color: var(--text-sub); }
+        /* VIEWS */
+        .view { display: none; padding: 15px; animation: fadeIn 0.3s; }
+        .view.active { display: block; }
 
-        /* --- ACTION BUTTONS (HOME) --- */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .action-card { background: white; padding: 20px; border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: transform 0.1s; height: 100px; }
-        .action-card:active { transform: scale(0.98); }
-        .action-icon { font-size: 32px; color: var(--primary); }
-        .action-text { font-weight: 600; font-size: 14px; }
+        /* HEADER & CARDS */
+        .header { background: white; padding: 20px 20px 15px; border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .user-info h1 { margin: 0; font-size: 18px; color: #333; }
+        .user-info p { margin: 0; font-size: 12px; color: #888; }
+        .role-badge { background: #e8f5e9; color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
 
-        /* --- JOB LIST (HISTORY) --- */
-        .job-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; border-left: 5px solid var(--primary); }
-        .job-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .job-id { font-weight: bold; font-size: 16px; }
-        .job-status { font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #e8f5e9; color: var(--primary); font-weight: bold; }
-        .job-detail { font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
-        .job-price { position: absolute; bottom: 15px; right: 15px; font-weight: bold; font-size: 18px; color: var(--text-main); }
+        .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; border-left: 4px solid var(--primary); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
+        .card-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; margin-bottom: 4px; }
+        .card-actions { margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end; }
 
-        /* --- BOTTOM NAV --- */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 10px 0 20px 0; display: flex; justify-content: space-around; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #C7C7CC; cursor: pointer; flex: 1; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item i { font-size: 20px; }
-        .nav-item span { font-size: 10px; font-weight: 500; }
+        /* GRID MENU */
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .menu-item { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: transform 0.1s; }
+        .menu-item:active { transform: scale(0.98); }
+        .menu-item i { font-size: 28px; color: var(--primary); margin-bottom: 10px; display: block; }
 
-        /* --- MAP SCREEN OVERLAY --- */
-        #map-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; display: none; }
-        #map { width: 100%; height: 65%; }
-        .map-controls { height: 35%; padding: 20px; background: white; border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-        .map-back-btn { position: absolute; top: 20px; left: 20px; background: white; padding: 10px 15px; border-radius: 8px; border: none; box-shadow: var(--shadow); z-index: 210; font-weight: bold; }
-        
-        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; font-family: 'Kanit'; box-sizing: border-box; }
-        .btn-confirm { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; }
-        .btn-confirm:disabled { background: #ccc; }
+        /* BOTTOM NAV */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0 25px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 900; }
+        .nav-btn { text-align: center; color: #ccc; font-size: 10px; cursor: pointer; flex: 1; }
+        .nav-btn.active { color: var(--primary); }
+        .nav-btn i { font-size: 22px; display: block; margin-bottom: 4px; }
+
+        /* FORMS & MAP */
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-family: 'Kanit'; outline: none; }
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background: var(--primary); }
+        .btn-warning { background: var(--warning); color: #333; }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: transparent; border: 1px solid #ddd; color: #333; }
+        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-top: 10px; }
+
+        /* MAP OVERLAY */
+        #map-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; background: white; }
+        #map { width: 100%; height: 60%; }
+        .map-tools { padding: 20px; height: 40%; background: white; border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+        .pac-container { z-index: 99999; }
+
+        .fab { position: fixed; bottom: 90px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 800; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div id="tab-home" class="tab-content active">
-        <div class="header">
-            <h1 id="welcomeText">สวัสดี...</h1>
-            <p id="roleText">ตำแหน่ง: ...</p>
+    <div class="header">
+        <div class="user-info">
+            <h1 id="user-name">Loading...</h1>
+            <p id="user-id">ID: ...</p>
         </div>
-        
-        <div class="stats-container">
-            <div class="stat-card">
-                <div class="stat-val" id="statTodayJobs">0</div>
-                <div class="stat-label">งานวันนี้</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-val" id="statTodayIncome">0฿</div>
-                <div class="stat-label">รายได้วันนี้</div>
-            </div>
-        </div>
-
-        <div style="font-weight: bold; margin-bottom: 15px; padding-left: 5px;">เมนูหลัก</div>
-        
-        <div class="action-grid">
-            <div class="action-card" id="btnCreate" style="display:none;" onclick="openMap()">
-                <i class="fa-solid fa-box-open action-icon"></i>
-                <div class="action-text">สร้างงาน</div>
-            </div>
-            <div class="action-card" id="btnPool" style="display:none;" onclick="sendAction('view_pool')">
-                <i class="fa-solid fa-layer-group action-icon"></i>
-                <div class="action-text">งานใน Pool</div>
-            </div>
-            <div class="action-card" style="opacity: 0.5;">
-                <i class="fa-solid fa-wallet action-icon"></i>
-                <div class="action-text">กระเป๋าเงิน</div>
-            </div>
-            <div class="action-card" style="opacity: 0.5;">
-                <i class="fa-solid fa-headset action-icon"></i>
-                <div class="action-text">ช่วยเหลือ</div>
-            </div>
-        </div>
+        <div class="role-badge" id="user-role">...</div>
     </div>
 
-    <div id="tab-history" class="tab-content" style="padding-top: 20px;">
-        <h2 style="padding-left: 5px;">ประวัติงานวันนี้</h2>
-        <div id="jobListContainer">
-            <div style="text-align: center; color: #999; margin-top: 50px;">กำลังโหลดข้อมูล...</div>
-        </div>
+    <div id="view-home" class="view active">
+        <div class="grid-menu" id="menu-container">
+            </div>
     </div>
 
-    <div id="tab-profile" class="tab-content" style="padding-top: 20px; text-align: center;">
-        <div style="width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 30px;">👤</div>
-        <h2 id="profileName">User Name</h2>
-        <p id="profileRole" style="color: #666;">Role</p>
-        <div style="margin-top: 20px; background: white; padding: 20px; border-radius: 12px; text-align: left;">
-            <div>📱 Telegram ID: <span id="profileId">...</span></div>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-            <div>⭐ คะแนน: 5.0</div>
-        </div>
+    <div id="view-pickup" class="view">
+        <h3>📍 จัดการจุดรับงาน</h3>
+        <div id="pickup-list"></div>
+        <div class="fab" onclick="openMap('add_pickup')"><i class="fa-solid fa-plus"></i></div>
     </div>
 
-    <div id="map-screen">
-        <button class="map-back-btn" onclick="closeMap()"><i class="fa-solid fa-arrow-left"></i> กลับ</button>
-        <div id="map"></div>
-        <div class="map-controls">
-            <select id="pickupSelector">
-                <option value="0">🏭 รับที่: Main Warehouse (HQ)</option>
-                <option value="1">🏬 รับที่: Branch 2 (Siam)</option>
+    <div id="view-pool" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📦 งานใน Pool</h3>
+            <span class="role-badge" id="pool-count">0 งาน</span>
+        </div>
+        <div id="pool-list"></div>
+        <button class="btn btn-primary btn-block" style="position:fixed; bottom:90px; left:5%; width:90%;" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button>
+    </div>
+
+    <div id="view-monitor" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3>👀 มอนิเตอร์งาน</h3>
+            <select id="monitor-filter" style="width:120px; margin:0;" onchange="renderMonitor()">
+                <option value="all">ทั้งหมด</option>
+                <option value="today">วันนี้</option>
             </select>
-            <input type="text" id="billId" placeholder="📝 เลขบิล / Order ID" />
-            <button class="btn-confirm" id="btnConfirm" disabled>📍 ปักหมุดบนแผนที่ก่อน</button>
+        </div>
+        <div id="monitor-list"></div>
+    </div>
+
+    <div id="view-rider" class="view">
+        <h3>🛵 งานของคุณ</h3>
+        <div id="rider-job-card">
+            <div style="text-align:center; padding:40px; color:#999;">
+                <i class="fa-solid fa-mug-hot" style="font-size:40px; margin-bottom:10px;"></i><br>ยังไม่มีงานเข้าครับ
+            </div>
+        </div>
+        <button class="btn btn-danger btn-block" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S (แจ้งเหตุฉุกเฉิน)</button>
+    </div>
+
+    <div id="map-overlay">
+        <div id="map"></div>
+        <div class="map-tools">
+            <h3 id="map-title">ปักหมุด</h3>
+            
+            <select id="pickupSelector" style="display:none;">
+                <option value="">เลือกจุดรับพัสดุ...</option>
+            </select>
+
+            <input id="search-box" type="text" placeholder="🔍 ค้นหาสถานที่..." />
+            <input id="extra-input" type="text" style="display:none;" /> <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="closeMap()">ยกเลิก</button>
+                <button class="btn btn-primary" style="flex:2;" id="btn-map-confirm" disabled>ยืนยัน</button>
+            </div>
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('home', this)">
-            <i class="fa-solid fa-house"></i>
-            <span>หน้าหลัก</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('history', this)">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-            <span>ประวัติ</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('profile', this)">
-            <i class="fa-solid fa-user"></i>
-            <span>บัญชี</span>
-        </div>
-    </div>
+    <div class="bottom-nav" id="bottom-nav"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
-        // 1. รับข้อมูลจาก URL (ที่ Python ส่งมา)
+        
+        let map, marker, selectedLoc = null, mapMode = '', currentJobId = null;
+        
+        // Parse Data
         const params = new URLSearchParams(window.location.search);
-        const userData = JSON.parse(decodeURIComponent(params.get('data') || '{}'));
-        // ตัวอย่าง data: { name: '..', role: '..', today_jobs: 5, income: 500, jobs_list: [...] }
+        const rawData = params.get('data');
+        const data = rawData ? JSON.parse(decodeURIComponent(rawData)) : { role: 'GUEST', name: 'Guest' };
 
-        // 2. Render หน้าจอ
-        document.getElementById('welcomeText').innerText = `สวัสดี, ${userData.name}`;
-        document.getElementById('roleText').innerText = `ตำแหน่ง: ${userData.role}`;
-        document.getElementById('profileName').innerText = userData.name;
-        document.getElementById('profileRole').innerText = userData.role;
-        document.getElementById('profileId').innerText = userData.id;
+        // Init UI
+        document.getElementById('user-name').innerText = data.name;
+        document.getElementById('user-id').innerText = `ID: ${data.id}`;
+        document.getElementById('user-role').innerText = data.role;
 
-        // Stats
-        document.getElementById('statTodayJobs').innerText = userData.today_count || 0;
-        document.getElementById('statTodayIncome').innerText = (userData.today_income || 0).toLocaleString() + ' ฿';
+        // --- RENDER LOGIC ---
+        const menuContainer = document.getElementById('menu-container');
+        const navContainer = document.getElementById('bottom-nav');
 
-        // ปุ่มตาม Role
-        if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(userData.role)) {
-            document.getElementById('btnCreate').style.display = 'flex';
+        // NAV: Home is always first
+        let navHtml = `<div class="nav-btn active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i>หน้าหลัก</div>`;
+
+        if (['SUPERADMIN', 'SUPERVISOR'].includes(data.role)) {
+            menuContainer.innerHTML = `
+                <div class="menu-item" onclick="nav('pickup', null)"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับงาน</div>
+                <div class="menu-item" onclick="nav('pool', null)"><i class="fa-solid fa-layer-group"></i><br>งานใน Pool</div>
+                <div class="menu-item" onclick="prepareCreateJob()"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
+            `;
+            renderPickupList(data.pickup_points || []);
+            renderPoolList(data.pool_jobs || []);
+        } 
+        else if (data.role === 'ADMIN') {
+            menuContainer.innerHTML = `
+                <div class="menu-item" onclick="nav('monitor', null)"><i class="fa-solid fa-desktop"></i><br>มอนิเตอร์</div>
+                <div class="menu-item" onclick="prepareCreateJob()"><i class="fa-solid fa-plus-circle"></i><br>สร้างงานใหม่</div>
+            `;
+            navHtml += `<div class="nav-btn" onclick="nav('monitor', this)"><i class="fa-solid fa-eye"></i>มอนิเตอร์</div>`;
+            renderMonitor(); 
         }
-        if (['SUPERADMIN', 'SUPERVISOR'].includes(userData.role)) {
-            document.getElementById('btnPool').style.display = 'flex';
+        else if (data.role === 'RIDER') {
+            menuContainer.style.display = 'none'; // Rider เข้าหน้างานเลย
+            navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งานของคุณ</div>`;
+            renderRiderJob(data.current_job);
+            setTimeout(() => nav('rider', document.querySelectorAll('.nav-btn')[1]), 100);
         }
 
-        // Render History List
-        const jobContainer = document.getElementById('jobListContainer');
-        if (userData.jobs_list && userData.jobs_list.length > 0) {
-            jobContainer.innerHTML = '';
-            userData.jobs_list.forEach(job => {
-                const html = `
-                <div class="job-card">
-                    <div class="job-header">
-                        <div class="job-id">📄 ${job.bill_id}</div>
-                        <div class="job-status">${job.status}</div>
+        navContainer.innerHTML = navHtml;
+
+        // --- RENDER HELPERS ---
+        function renderPickupList(list) {
+            document.getElementById('pickup-list').innerHTML = list.map(p => `
+                <div class="card"><div class="card-row"><i class="fa-solid fa-location-dot"></i> <b>${p.name}</b></div></div>
+            `).join('');
+        }
+
+        function renderPoolList(list) {
+            document.getElementById('pool-count').innerText = list.length + ' งาน';
+            document.getElementById('pool-list').innerHTML = list.map(j => `
+                <div class="card">
+                    <div class="card-header">📝 ${j.bill_id} <span class="role-badge">PENDING</span></div>
+                    <div class="card-row"><i class="fa-solid fa-store"></i> รับ: ${j.pickup}</div>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">ปล่อยงาน</button>
                     </div>
-                    <div class="job-detail"><i class="fa-solid fa-location-dot"></i> ${job.pickup} ➝ ปลายทาง</div>
-                    <div class="job-detail"><i class="fa-solid fa-clock"></i> ${job.time}</div>
-                    ${job.proof ? `<div class="job-detail" style="color:#00B900"><i class="fa-solid fa-image"></i> มีรูปยืนยัน</div>` : ''}
-                    <div class="job-price">${job.price} ฿</div>
-                </div>`;
-                jobContainer.innerHTML += html;
-            });
-        } else {
-            jobContainer.innerHTML = '<div style="text-align:center; padding:20px;">วันนี้ยังไม่มีงานครับ</div>';
+                </div>
+            `).join('');
         }
 
-        // --- UI FUNCTIONS ---
-        function switchTab(tabId, el) {
-            document.querySelectorAll('.tab-content').forEach(d => d.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(d => d.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-            el.classList.add('active');
+        function renderMonitor() {
+            const filter = document.getElementById('monitor-filter').value;
+            const list = data.monitor_jobs || [];
+            // Simple Client-side filter (Today simulation)
+            const filtered = (filter === 'today') ? list.slice(0, 5) : list; // (In real app, filter by date string)
+
+            document.getElementById('monitor-list').innerHTML = filtered.map(j => `
+                <div class="card">
+                    <div class="card-header">📝 ${j.bill_id} <span class="role-badge" style="background:${getStatusColor(j.status)}">${j.status}</span></div>
+                    <div class="card-row"><i class="fa-solid fa-user"></i> ${j.rider || '-'}</div>
+                    <div class="card-actions">
+                        ${j.status !== 'COMPLETED' && j.status !== 'CANCELLED' ? 
+                            `<button class="btn btn-outline" onclick="editDest('${j.job_id}')">✏️ แก้ปลายทาง</button>` : ''}
+                        ${j.status === 'COMPLETED' ? 
+                            `<a href="${j.proof}" target="_blank" class="btn btn-primary">ดูรูปจบงาน</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function openMap() { document.getElementById('map-screen').style.display = 'block'; if(!map) initMap(); }
-        function closeMap() { document.getElementById('map-screen').style.display = 'none'; }
-        function sendAction(action) { tg.sendData(JSON.stringify({ action: action })); }
+        function renderRiderJob(job) {
+            const el = document.getElementById('rider-job-card');
+            if (!job) return;
 
-        // --- MAP LOGIC ---
-        let map, marker, selectedLocation = null;
+            let actions = '';
+            // Flow: ASSIGNED -> PICKED_UP -> COMPLETED
+            if (job.status === 'ASSIGNED') {
+                actions = `
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary btn-block">🗺️ นำทางไปจุดรับ</a>
+                    <button class="btn btn-warning btn-block" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับพัสดุแล้ว</button>
+                `;
+            } else if (job.status === 'PICKED_UP') {
+                actions = `
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary btn-block">🗺️ นำทางไปจุดส่ง</a>
+                    <button class="btn btn-primary btn-block" onclick="reqFinish('${job.job_id}')">📸 ส่งสำเร็จ (ถ่ายรูป)</button>
+                `;
+            }
+
+            el.innerHTML = `
+                <div class="card" style="border-left: 5px solid #00B900;">
+                    <div class="card-header" style="font-size:20px;">📝 ${job.bill_id}</div>
+                    <div class="card-row"><i class="fa-solid fa-store"></i> <b>รับ:</b> ${job.pickup_name}</div>
+                    <div class="card-row"><i class="fa-solid fa-flag-checkered"></i> <b>ส่ง:</b> ปลายทางลูกค้า</div>
+                    <div class="card-row"><i class="fa-solid fa-money-bill"></i> <b>ค่าเที่ยว:</b> ${job.price} บาท</div>
+                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                    ${actions}
+                    <button class="btn btn-outline btn-block" style="margin-top:10px; color:red; border-color:red;" onclick="cancelJob('${job.job_id}')">❌ ยกเลิกงาน</button>
+                </div>
+            `;
+        }
+
+        // --- ACTIONS ---
+        function nav(viewId, el) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            if(el) {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                el.classList.add('active');
+            }
+        }
+
+        function openMap(mode, jobId = null) {
+            mapMode = mode;
+            currentJobId = jobId;
+            document.getElementById('map-overlay').style.display = 'block';
+            
+            // Reset UI elements
+            document.getElementById('pickupSelector').style.display = 'none';
+            document.getElementById('extra-input').style.display = 'none';
+            
+            if (mode === 'add_pickup') {
+                document.getElementById('map-title').innerText = "เพิ่มจุดรับใหม่";
+                const inp = document.getElementById('extra-input');
+                inp.style.display = 'block';
+                inp.placeholder = "ตั้งชื่อจุดรับ (เช่น Warehouse A)";
+            } else if (mode === 'create_job') {
+                document.getElementById('map-title').innerText = "สร้างงานใหม่";
+                const sel = document.getElementById('pickupSelector');
+                sel.style.display = 'block';
+                // Populate pickup dropdown
+                sel.innerHTML = (data.pickup_points || []).map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+                
+                const inp = document.getElementById('extra-input');
+                inp.style.display = 'block';
+                inp.placeholder = "📝 เลขบิล / Order ID";
+            } else if (mode === 'edit_dest') {
+                document.getElementById('map-title').innerText = "แก้ไขปลายทาง";
+            }
+
+            if (!map) initMap();
+        }
+
+        function prepareCreateJob() { openMap('create_job'); }
+        function editDest(jobId) { openMap('edit_dest', jobId); }
+        function closeMap() { document.getElementById('map-overlay').style.display = 'none'; }
+
+        function confirmSOS() {
+            if(confirm("🚨 คุณแน่ใจหรือไม่ที่จะกด S.O.S? \nบัญชีของคุณจะถูกระงับทันที!")) {
+                sendAction('sos');
+            }
+        }
+
+        function reqFinish(jobId) {
+            sendAction('req_finish', { job_id: jobId });
+            tg.close();
+        }
+
+        function cancelJob(jobId) {
+            const reason = prompt("กรุณาระบุเหตุผลการยกเลิก:");
+            if(reason) sendAction('cancel_job', { job_id: jobId, reason: reason });
+        }
+
+        function sendAction(action, payload = {}) {
+            tg.sendData(JSON.stringify({ action: action, ...payload }));
+        }
+
+        function getStatusColor(s) {
+            if(s === 'COMPLETED') return '#e8f5e9';
+            if(s === 'CANCELLED') return '#f8d7da';
+            return '#fff3cd';
+        }
+
+        // --- MAP CORE ---
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 zoom: 15, center: { lat: 13.7563, lng: 100.5018 },
                 disableDefaultUI: true, gestureHandling: "greedy"
             });
-            map.addListener("click", (e) => {
-                if (marker) marker.setMap(null);
-                marker = new google.maps.Marker({ position: e.latLng, map: map, animation: google.maps.Animation.DROP });
-                selectedLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-                checkReady();
+            const input = document.getElementById("search-box");
+            const ac = new google.maps.places.Autocomplete(input);
+            ac.bindTo("bounds", map);
+            ac.addListener("place_changed", () => {
+                const p = ac.getPlace();
+                if (p.geometry) {
+                    if (p.geometry.viewport) map.fitBounds(p.geometry.viewport);
+                    else { map.setCenter(p.geometry.location); map.setZoom(17); }
+                    placeMarker(p.geometry.location);
+                }
             });
+            map.addListener("click", (e) => placeMarker(e.latLng));
         }
 
-        const billInput = document.getElementById("billId");
-        const btnConfirm = document.getElementById("btnConfirm");
-        billInput.addEventListener("input", checkReady);
+        function placeMarker(latLng) {
+            if (marker) marker.setMap(null);
+            marker = new google.maps.Marker({ position: latLng, map: map });
+            selectedLoc = { lat: latLng.lat(), lng: latLng.lng() };
+            document.getElementById('btn-map-confirm').disabled = false;
+        }
 
-        function checkReady() {
-            if (selectedLocation && billInput.value.trim() !== "") {
-                btnConfirm.disabled = false;
-                btnConfirm.innerText = "ยืนยันสร้างงาน";
-            } else {
-                btnConfirm.disabled = true;
-                btnConfirm.innerText = "📍 ปักหมุดและกรอกบิล";
+        document.getElementById('btn-map-confirm').addEventListener('click', () => {
+            if (!selectedLoc) return;
+            const extra = document.getElementById('extra-input').value;
+
+            if (mapMode === 'add_pickup') {
+                if(!extra) return alert('กรุณาใส่ชื่อจุดรับ');
+                sendAction('save_pickup', { name: extra, ...selectedLoc });
+            } else if (mapMode === 'create_job') {
+                if(!extra) return alert('กรุณาใส่เลขบิล');
+                const pIndex = document.getElementById('pickupSelector').value;
+                sendAction('create_job', { bill_id: extra, pickup_index: parseInt(pIndex), ...selectedLoc });
+            } else if (mapMode === 'edit_dest') {
+                sendAction('edit_destination', { job_id: currentJobId, ...selectedLoc });
             }
-        }
-
-        btnConfirm.addEventListener("click", () => {
-            const pickupIndex = document.getElementById("pickupSelector").value;
-            tg.sendData(JSON.stringify({
-                action: "create_job",
-                bill_id: billInput.value.trim(),
-                lat: selectedLocation.lat,
-                lng: selectedLocation.lng,
-                pickup_index: parseInt(pickupIndex)
-            }));
+            closeMap();
         });
+
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>
