@@ -122,15 +122,19 @@
     
     <div class="form-group">
         <label class="form-label">3. รายละเอียดลูกค้า</label>
-        <input type="text" id="job-bill-id" placeholder="เลขบิล / Order ID" style="margin-bottom:5px;" />
+        
+        <input type="text" id="job-bill-id" placeholder="เลขบิล / Order ID" style="margin-bottom:5px;" enterkeyhint="next" />
+        
         <div style="display:flex; gap:5px; margin-bottom:5px;">
-            <input type="text" id="job-recv-name" placeholder="ชื่อผู้รับ" style="flex:1;" />
-            <input type="tel" id="job-recv-phone" placeholder="เบอร์โทร" style="flex:1;" />
+            <input type="text" id="job-recv-name" placeholder="ชื่อผู้รับ" style="flex:1;" enterkeyhint="next" />
+            
+            <input type="tel" id="job-recv-phone" placeholder="เบอร์โทร" style="flex:1;" enterkeyhint="next" />
         </div>
-        <textarea id="job-note" placeholder="หมายเหตุ (เช่น ระวังแตก, ฝากป้อมยาม)" rows="2"></textarea>
+        
+        <input type="text" id="job-note" placeholder="หมายเหตุ (เช่น ระวังแตก, ฝากป้อมยาม)" enterkeyhint="done" />
     </div>
 
-    <button class="btn btn-primary" onclick="submitJob()">🚀 สรุปและสร้างงาน</button>
+    <button class="btn btn-primary" id="btn-submit-job" onclick="submitJob()">🚀 สรุปและสร้างงาน</button>
 </div>
 
 <div id="view-pool" class="view"><h3>📦 Pool</h3><div id="pool-list"></div><button class="btn btn-primary" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button></div>
@@ -740,6 +744,39 @@
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
         return R * c; 
     }
+
+    // --- AUTO FOCUS LOGIC ---
+    function setupFormNavigation() {
+        // รายชื่อ ID ของ Input เรียงตามลำดับ
+        const inputs = ['job-bill-id', 'job-recv-name', 'job-recv-phone', 'job-note'];
+
+        inputs.forEach((id, index) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            el.addEventListener('keydown', (e) => {
+                // เช็คว่ากดปุ่ม Enter (code 13)
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault(); // ห้ามไม่ให้เกิด Action ปกติ (เช่นขึ้นบรรทัดใหม่)
+
+                    if (index < inputs.length - 1) {
+                        // ถ้ายังไม่ใช่ช่องสุดท้าย ให้ย้าย Focus ไปช่องถัดไป
+                        const nextEl = document.getElementById(inputs[index + 1]);
+                        if (nextEl) nextEl.focus();
+                    } else {
+                        // ถ้าเป็นช่องสุดท้าย (job-note) ให้ปิดคีย์บอร์ดและกดปุ่มสร้างงาน
+                        el.blur(); 
+                        submitJob();
+                    }
+                }
+            });
+        });
+    }
+
+// เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
+document.addEventListener('DOMContentLoaded', () => {
+    try { setupFormNavigation(); } catch(e) {}
+});
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
 </body>
