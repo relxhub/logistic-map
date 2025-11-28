@@ -35,7 +35,7 @@
     input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Kanit'; outline: none; font-size: 15px; background: #fff; }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); }
 
-    .btn { box-sizing: border-box; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 5px; margin-top: 5px; transition: 0.2s; }
+    .btn { box-sizing: border-box;width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 5px; margin-top: 5px; transition: 0.2s; }
     .btn:disabled { background-color: #ccc !important; cursor: not-allowed; }
     .btn-primary { background: var(--primary); }
     .btn-danger { background: var(--danger); }
@@ -388,6 +388,7 @@
     function renderRiderJob(job) {
         const el = document.getElementById('rider-job-card');
         if (countdownInterval) clearInterval(countdownInterval);
+
         if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px;">ว่าง</div>'; return; }
         
         let btns = '';
@@ -395,13 +396,38 @@
         let statusText = 'งานของคุณ';
         let extraHtml = '';
 
+        // --- ส่วน Contact Info (ชื่อ/เบอร์/Note) ---
+        let contactInfo = '';
+        if(job.receiver_name && job.receiver_name !== '-') {
+            contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
+        }
+        
+        // 🔴 จุดแก้ที่ 1: ปุ่มโทรออกที่ใช้งานได้จริง
+        if(job.receiver_phone && job.receiver_phone !== '-') {
+            contactInfo += `
+            <div style="margin-top:5px; display:flex; align-items:center; gap:10px;">
+                <span>📞 เบอร์: ${job.receiver_phone}</span>
+                <a href="tel:${job.receiver_phone}" class="btn btn-warning" style="width:auto; padding:4px 10px; font-size:12px; text-decoration:none;">
+                    <i class="fa-solid fa-phone"></i> โทร
+                </a>
+            </div>`;
+        }
+        
+        if(job.note && job.note !== '-') {
+            contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
+        }
+
+        // --- Logic ปุ่มกดและ Countdown ---
         if (job.status === 'OFFERED') {
             statusColor = '#ffc107';
             statusText = '🔔 งานใหม่มาแล้ว!';
+            
+            // Logic Countdown (จะทำงานถูกต้องแล้ว เพราะ Server ส่งเวลามาตรฐานมา)
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
             const serverTimeMs = new Date(data.server_time).getTime();
             const clientTimeMs = new Date().getTime();
-            const timeDiff = clientTimeMs - serverTimeMs;
+            const timeDiff = clientTimeMs - serverTimeMs; // หาความต่างเวลาเครื่องกับ Server
+
             const updatedTime = new Date(job.updated_at).getTime();
             const expireTime = updatedTime + (timeoutSec * 1000);
 
@@ -412,8 +438,9 @@
                     <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
                 </div>
             `;
+            
             countdownInterval = setInterval(() => {
-                const nowAdjusted = new Date().getTime() - timeDiff;
+                const nowAdjusted = new Date().getTime() - timeDiff; // เวลาปัจจุบันที่จูนตรงกับ Server แล้ว
                 const diff = expireTime - nowAdjusted;
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
@@ -426,40 +453,22 @@
             }, 1000);
 
         } else if(job.status === 'ASSIGNED') {
-            btns = `<a href="https://www.google.com/maps/dir/?api=1\\&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">🗺️ นำทางไปจุดรับ</a>
+             btns = `
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">🗺️ นำทางไปจุดรับ</a>
             <button class="btn btn-warning" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับของแล้ว</button>
             <button class="btn btn-danger" style="margin-top:10px;" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button>`;
         } else if (job.status === 'PICKED_UP') {
-            btns = `<a href="https://www.google.com/maps/dir/?api=1\\&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">🏁 นำทางไปจุดส่ง</a>
+            btns = `
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">🏁 นำทางไปจุดส่ง</a>
             <button class="btn btn-primary" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">📸 ถ่ายรูปส่งงาน</button>`;
-        }
-
-        // ✅ Rider Data Display Logic (Updated for completeness)
-        let priceDisplay = `<b>${job.price} ฿</b>`;
-        let extraFeeRow = '';
-        if(job.extra_fee && job.extra_fee > 0) {
-            priceDisplay = `<b>${job.price} ฿</b> <span style="font-size:12px; color:${statusColor}">(รวมค่าเปลี่ยนที่ ${job.extra_fee}฿)</span>`;
-            extraFeeRow = `<div style="background:#fff3cd; color:#856404; padding:5px; border-radius:4px; font-size:12px; margin-bottom:5px;">⚠️ มีการเปลี่ยนแปลงปลายทาง +${job.extra_fee}฿</div>`;
-        }
-
-        let contactInfo = '';
-        if(job.receiver_name && job.receiver_name !== '-') {
-            contactInfo += `<p>👤 ผู้รับ: <b>${job.receiver_name}</b></p>`;
-        }
-        if(job.receiver_phone && job.receiver_phone !== '-') {
-            contactInfo += `<p>📞 เบอร์: <a href="tel:${job.receiver_phone}" class="btn btn-warning btn-sm" style="display:inline-block; width:auto; padding:2px 10px;">${job.receiver_phone} (กดโทร)</a></p>`;
-        }
-        if(job.note && job.note !== '-') {
-            contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:5px; margin:5px 0; font-size:13px;">📝 <b>Note:</b> ${job.note}</div>`;
         }
 
         el.innerHTML = `
             <div class="card" style="border-left:5px solid ${statusColor};">
                 <h2 style="color:${statusColor}">${statusText}</h2>
                 ${extraHtml}
-                ${extraFeeRow}
                 <h3>${job.bill_id}</h3>
-                <p>💰 ค่าเที่ยว: ${priceDisplay}</p>
+                <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b></p>
                 <p>📍 รับ: ${job.pickup_name}</p>
                 <hr>
                 ${contactInfo}
