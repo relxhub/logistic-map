@@ -95,7 +95,12 @@
 
 <div class="header">
     <div class="user-info"><h1 id="user-name">...</h1><p id="user-id">ID: ...</p></div>
-    <div class="role-badge" id="user-role">...</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <button class="btn-icon" onclick="window.location.reload()" style="background:#f0f0f0; border-radius:50%; width:35px; height:35px; display:flex; align-items:center; justify-content:center;">
+            <i class="fa-solid fa-rotate-right" style="font-size:16px;"></i>
+        </button>
+        <div class="role-badge" id="user-role">...</div>
+    </div>
 </div>
 
 <div id="view-home" class="view active">
@@ -218,6 +223,7 @@
 
     // ✅ วางตรงนี้ครับ (บรรทัดแรกๆ ของ script)
     let selectedJobs = new Set();
+    let selectedPoolJobs = new Set(); // ✅ ของ Pool (เพิ่มบรรทัดนี้)
     
     // STATE
     let data = { role: 'GUEST' };
@@ -527,6 +533,41 @@
         `;
     }
 
+    function confirmPoolDispatchSelected() {
+        if (selectedPoolJobs.size === 0) return;
+        modalActionType = 'release_pool_selected';
+        pendingPayload = { job_ids: Array.from(selectedPoolJobs) };
+        
+        const content = `
+            <div style="text-align:center; padding:10px;">
+                <i class="fa-solid fa-paper-plane" style="font-size:40px; color:var(--primary); margin-bottom:10px;"></i>
+                <p>ต้องการปล่อยงาน <b>${selectedPoolJobs.size} รายการ</b>?</p>
+                <p style="font-size:12px; color:#666;">งานจะถูกส่งให้ไรเดอร์ทันที</p>
+            </div>
+        `;
+        document.getElementById('modal-title').innerText = "🚀 ยืนยันปล่อยงาน";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
+    function confirmPoolCancel(jobId, billId) {
+        modalActionType = 'pool_cancel';
+        pendingPayload = { job_id: jobId };
+        
+        const content = `
+            <div style="text-align:center; padding:10px;">
+                <i class="fa-solid fa-circle-xmark" style="font-size:40px; color:#dc3545; margin-bottom:10px;"></i>
+                <p>ต้องการยกเลิกงานนี้?</p>
+                <p>บิล: <b>${billId}</b></p>
+            </div>
+        `;
+        document.getElementById('modal-title').innerText = "⚠️ ยกเลิกงาน";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
     function showFinishConfirm(jobId) {
         currentJobId = jobId;
         modalActionType = 'finish_job';
@@ -620,40 +661,82 @@
 
     function renderPoolList(list) {
         const el = document.getElementById('pool-list');
-        // อัปเดตตัวเลข (ตอนนี้ HTML มี id นี้แล้ว จะไม่ Error)
-        if(document.getElementById('pool-count')) {
-            document.getElementById('pool-count').innerText = list.length;
-        }
+        if(document.getElementById('pool-count')) document.getElementById('pool-count').innerText = list.length;
 
-        if(list.length === 0) { 
-            el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; 
-            return; 
-        }
+        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; return; }
 
-        el.innerHTML = list.map(j => {
-            let actionBtn = '';
+        // 1. สร้าง HTML การ์ด
+        let html = list.map(j => {
+            const isReady = j.status === 'PENDING_POOL';
+            const isSel = selectedPoolJobs.has(j.job_id) ? 'selected' : '';
             
-            // ✅ Logic เลือกสีปุ่มตามสถานะ
-            if (j.status === 'PREPARING') {
-                // ของยังไม่พร้อม -> ปุ่มสีเทา (กดไม่ได้)
-                actionBtn = `<button class="btn btn-outline btn-sm" disabled style="color:#999; border-color:#ddd; cursor:not-allowed;">⏳ รอคลังเตรียมของ</button>`;
+            // ถ้าไม่พร้อม (Preparing) จะกดเลือกไม่ได้
+            const clickAction = isReady ? `onclick="toggleSelectPoolJob('${j.job_id}')"` : '';
+            const checkIcon = isReady ? `<i class="fa-solid fa-circle-check select-check"></i>` : '';
+            const cardStyle = isReady ? 'border-left:4px solid #ffc107; cursor:pointer;' : 'border-left:4px solid #ccc; opacity:0.8;';
+
+            // ปุ่ม Action (ขวา)
+            let mainBtn = '';
+            if (isReady) {
+                mainBtn = `<button class="btn btn-primary btn-sm" style="width:70%;" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">🚀 ปล่อยงาน</button>`;
             } else {
-                // ของพร้อมแล้ว -> ปุ่มสีน้ำเงิน (ปล่อยงานได้)
-                actionBtn = `<button class="btn btn-primary btn-sm" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">🚀 ปล่อยงาน</button>`;
+                // ✅ แก้ข้อ 4: ปรับไซส์ปุ่มรอให้เท่ากับปุ่มปล่อยงาน (70%)
+                mainBtn = `<button class="btn btn-outline btn-sm" disabled style="width:70%; color:#999; border-color:#ddd;">⏳ รอคลังเตรียม</button>`;
             }
 
-            // ✅ แสดงเลข Order (#...) และสถานะ
             return `
-            <div class="card" style="border-left:4px solid ${j.status === 'PREPARING' ? '#ccc' : '#ffc107'};">
-                <div class="card-header">
-                    <span>📝 #${j.order_no || '-'} | ${j.bill_id}</span>
-                </div>
+            <div class="card ${isSel}" style="${cardStyle} position:relative;" ${clickAction}>
+                ${checkIcon}
+                <div class="card-header">📝 #${j.order_no || '-'} | ${j.bill_id}</div>
                 <div class="card-row">📍 รับ: ${j.pickup}</div>
                 <div class="card-row">🏁 ส่ง: ${j.dropoff_lat.toFixed(4)}, ${j.dropoff_lng.toFixed(4)}</div>
-                <div class="card-actions">${actionBtn}</div>
+                
+                <div class="card-actions" onclick="event.stopPropagation()">
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger); width:30%; margin-right:5px;" onclick="confirmPoolCancel('${j.job_id}', '${j.bill_id}')">
+                        ❌ ยกเลิก
+                    </button>
+                    ${mainBtn}
+                </div>
             </div>
             `;
         }).join('');
+
+        // 2. Logic ปุ่ม Batch ด้านล่าง
+        const count = selectedPoolJobs.size;
+        let batchHtml = '';
+        
+        if (count > 0) {
+            batchHtml = `
+            <div style="padding: 10px 0; position:sticky; bottom:0; background:var(--bg); z-index:100; border-top:1px solid #ddd;">
+                <button class="btn btn-primary" onclick="confirmPoolDispatchSelected()">
+                    🚀 ปล่อยงานที่เลือก (${count} รายการ)
+                </button>
+            </div>`;
+        } else {
+            // ปุ่มปล่อยทั้งหมดแบบเดิม (แสดงเมื่อไม่ได้เลือกอะไรเลย)
+            // เช็คว่ามีงานพร้อมปล่อยอย่างน้อย 1 งานไหม
+            const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
+            if(readyCount > 0) {
+                batchHtml = `
+                <div style="padding: 10px 0;">
+                    <button class="btn btn-primary" onclick="if(confirm('ยืนยันปล่อยทุกงานที่พร้อม (${readyCount})?')) sendAction('release_all')">
+                        🚀 ปล่อยงานทั้งหมดที่พร้อม (${readyCount})
+                    </button>
+                </div>`;
+            }
+        }
+
+        el.innerHTML = html + batchHtml;
+    }
+
+    // ฟังก์ชัน Toggle เลือกงาน
+    function toggleSelectPoolJob(jobId) {
+        if (selectedPoolJobs.has(jobId)) {
+            selectedPoolJobs.delete(jobId);
+        } else {
+            selectedPoolJobs.add(jobId);
+        }
+        renderPoolList(data.pool_jobs);
     }
 
     // --- CREATE JOB & MODAL ---
@@ -772,6 +855,10 @@
         // ✅ เพิ่มเงื่อนไขนี้ครับ
         } else if (modalActionType === 'warehouse_cancel') {
             sendAction('warehouse_cancel', { job_id: currentJobId });
+        } else if (modalActionType === 'release_pool_selected') {
+            sendAction('release_pool_selected', pendingPayload);
+        } else if (modalActionType === 'pool_cancel') {
+            sendAction('pool_cancel', pendingPayload);
         }
         
         closeModal();
