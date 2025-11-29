@@ -1307,29 +1307,39 @@
 
     function setupCustomerSearch() {
         const list = data.saved_customers || [];
-        const sel = document.getElementById('customer-search-select');
-        if(!sel) return;
         
-        sel.innerHTML = '<option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>' + 
-                        list.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        // 👇 ชี้ไปที่ ID ของ datalist (ไม่ใช่ select)
+        const dl = document.getElementById('customer-list'); 
+        
+        if(!dl) return; // ถ้าหาไม่เจอก็จบ
+        
+        // สร้าง option สำหรับ datalist
+        // value คือค่าที่จะไปโชว์ในช่องพิมพ์
+        dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
     }
 
-    // 2. เมื่อเลือกรายชื่อ -> เติมข้อมูล
+    // ✅ ฟังก์ชันเมื่อเลือกรายชื่อ (สำหรับ Datalist)
     function onCustomerSelected(input) {
         const val = input.value;
         if(!val) return;
+
+        // ค้นหาข้อมูลจากชื่อที่เลือก
         const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
         
         if(customer) {
+            // เติมข้อมูลลงฟอร์ม
             document.getElementById('job-recv-name').value = customer.receiver_name || '';
             document.getElementById('job-recv-phone').value = customer.receiver_phone || '';
+            
             tempLat = customer.lat;
             tempLng = customer.lng;
             document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
             showStaticMap('preview-job', tempLat, tempLng);
+            
+            // ย้ายเคอร์เซอร์ไปช่องถัดไป
             document.getElementById('job-bill-id').focus();
             
-            // ล้างช่องค้นหาให้ดูสะอาด (Option)
+            // ล้างช่องค้นหา (เพื่อให้พิมพ์หาใหม่ได้ง่าย) หรือจะคงค่าไว้ก็ได้
             input.value = ''; 
             input.placeholder = `เลือก: ${customer.name} แล้ว`;
         }
