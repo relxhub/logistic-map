@@ -746,10 +746,12 @@
         } else if (modalActionType === 'finish_job') {
             sendAction('req_finish', { job_id: currentJobId });
             tg.close();
-        
-        // ✅ เพิ่มเงื่อนไขนี้
         } else if (modalActionType === 'warehouse_ready_all') {
             sendAction('warehouse_ready_all');
+        
+        // ✅ เพิ่มเงื่อนไขนี้ครับ
+        } else if (modalActionType === 'warehouse_cancel') {
+            sendAction('warehouse_cancel', { job_id: currentJobId });
         }
         
         closeModal();
@@ -880,14 +882,17 @@
                 <div class="card-row">👤 ผู้รับ: ${j.receiver_name}</div>
                 <div class="card-row">📞 เบอร์: ${j.receiver_phone}</div>
                 <div class="card-actions">
-                    <button class="btn btn-primary btn-sm" onclick="sendAction('warehouse_ready_one', {job_id: '${j.job_id}', bill_id: '${j.bill_id}'})">
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger); width:30%; margin-right:5px;" onclick="confirmWarehouseCancel('${j.job_id}', '${j.bill_id}')">
+                        ❌ ยกเลิก
+                    </button>
+                    <button class="btn btn-primary btn-sm" style="width:70%;" onclick="sendAction('warehouse_ready_one', {job_id: '${j.job_id}', bill_id: '${j.bill_id}'})">
                         ✅ พร้อมแล้ว
                     </button>
                 </div>
             </div>
         `).join('');
 
-        // ✅ ปุ่มสีเหลือง + เรียก Modal ยืนยัน
+        // ปุ่มพร้อมทั้งหมด (คงเดิม)
         html += `
         <div style="padding: 10px 0;">
             <button class="btn btn-finish" onclick="confirmWarehouseReadyAll(${list.length})">
@@ -896,6 +901,26 @@
         </div>`;
 
         el.innerHTML = html;
+    }
+
+    function confirmWarehouseCancel(jobId, billId) {
+        currentJobId = jobId;
+        modalActionType = 'warehouse_cancel';
+        
+        const content = `
+            <div style="text-align:center; padding:10px;">
+                <i class="fa-solid fa-circle-xmark" style="font-size:40px; color:#dc3545; margin-bottom:10px;"></i>
+                <p style="font-size:16px; font-weight:bold;">ต้องการยกเลิกออเดอร์?</p>
+                <p>บิล: <b>${billId}</b></p>
+                <hr style="margin:10px 0; border:0; border-top:1px dashed #ddd;">
+                <p style="font-size:12px; color:#666;">(การยกเลิกจะลบรายการนี้ออกจากระบบทันที)</p>
+            </div>
+        `;
+        
+        document.getElementById('modal-title').innerText = "⚠️ ยืนยันการยกเลิก";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
     }
 
     function confirmWarehouseReadyAll(count) {
