@@ -115,6 +115,39 @@
     <div class="fab" onclick="goToAddPickup()"><i class="fa-solid fa-plus"></i></div>
 </div>
 
+<div id="view-customers" class="view">
+    <h3>📖 ที่อยู่ลูกค้า</h3>
+    <div id="customer-list"></div>
+    <div class="fab" onclick="goToAddCustomer()"><i class="fa-solid fa-plus"></i></div>
+</div>
+
+<div id="view-add-customer" class="view">
+    <button class="btn btn-outline" onclick="nav('customers')" style="margin-bottom:15px;">🔙 กลับ</button>
+    <h3 id="customer-form-title">➕ เพิ่มลูกค้าใหม่</h3>
+    
+    <div class="form-group">
+        <label class="form-label">ชื่อที่บันทึก (รหัสลูกค้า)</label>
+        <input type="text" id="cust-save-name" placeholder="เช่น รหัส A01" />
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">รายละเอียดผู้รับ</label>
+        <input type="text" id="cust-recv-name" placeholder="ชื่อผู้รับ" style="margin-bottom:5px;" />
+        <input type="tel" id="cust-recv-phone" placeholder="เบอร์โทร" />
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">ตำแหน่งจัดส่ง</label>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="cust-search-input" placeholder="ปักหมุดบนแผนที่..." onclick="openMap('customer')" readonly />
+            <button class="btn btn-primary" style="width:auto;" onclick="openMap('customer')"><i class="fa-solid fa-map"></i></button>
+        </div>
+        <div id="preview-customer" class="map-preview" onclick="openMap('customer')"><div class="map-preview-placeholder">แผนที่</div></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveCustomerForm()">💾 บันทึกข้อมูล</button>
+</div>
+
 <div id="view-add-pickup" class="view">
     <button class="btn btn-outline" onclick="nav('pickup')" style="margin-bottom:15px;">🔙 กลับ</button>
     <h3 id="pickup-form-title">➕ เพิ่มจุดรับใหม่</h3>
@@ -284,7 +317,7 @@
             menuHtml += `<div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
-            menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div>`;
+            menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
             let nh = navHtml + `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
             if (role !== 'ADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('pool')"><i class="fa-solid fa-layer-group"></i><br>Pool</div>`;
