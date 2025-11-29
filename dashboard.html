@@ -584,6 +584,10 @@
         let statusText = 'งานของคุณ';
         let extraHtml = '';
 
+        // ✅ แก้ไขลิงก์แผนที่ให้ถูกต้อง (ใช้ Google Maps Link มาตรฐาน)
+        const pickupMap = `https://www.google.com/maps/search/?api=1&query=${job.pickup_lat},${job.pickup_lng}`;
+        const dropoffMap = `https://www.google.com/maps/search/?api=1&query=${job.dropoff_lat},${job.dropoff_lng}`;
+
         // --- ส่วน Contact Info ---
         let contactInfo = '';
         if(job.receiver_name && job.receiver_name !== '-') {
@@ -601,14 +605,12 @@
             statusColor = '#ffc107';
             statusText = '🔔 งานใหม่มาแล้ว!';
         
-            // คำนวณ Countdown
+            // คำนวณเวลานับถอยหลัง
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
-            // ป้องกัน Error กรณี server_time ไม่มี
             const serverTime = data.server_time ? new Date(data.server_time).getTime() : new Date().getTime();
             const clientTime = new Date().getTime();
             const timeDiff = clientTime - serverTime;
-            const updatedTime = new Date(job.updated_at).getTime();
-            const expireTime = updatedTime + (timeoutSec * 1000);
+            const expireTime = new Date(job.updated_at).getTime() + (timeoutSec * 1000);
 
             extraHtml = `<div id="job-countdown" style="text-align:center; font-size:24px; font-weight:bold; color:#d9534f; margin:10px 0;">...</div>`;
         
@@ -637,40 +639,30 @@
             }, 1000);
 
         } else if(job.status === 'ASSIGNED') {
-            // ✅ ใส่ Backtick (`) ครอบ URL ให้ถูกต้อง
-            const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
-        
             btns = `
             <div style="display:flex; flex-direction:column; gap:10px;">
-                <a href="${mapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                <a href="${pickupMap}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-location-arrow"></i> นำทางไปจุดรับ
                 </a>
-                <button class="btn btn-warning" onclick="if(confirm('ยืนยันว่าได้รับของเรียบร้อยแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
+                <button class="btn btn-warning" onclick="if(confirm('รับของแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
                     <i class="fa-solid fa-box-open"></i> รับของแล้ว
                 </button>
-                <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')">
-                    <i class="fa-solid fa-ban"></i> ยกเลิกงาน
-                </button>
-            </div>
-            `;
+                <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')"><i class="fa-solid fa-ban"></i> ยกเลิกงาน</button>
+            </div>`;
 
         } else if (job.status === 'PICKED_UP') {
-            // ✅ ใส่ Backtick (`) ครอบ URL ให้ถูกต้อง
-            const dropoffMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
-        
             btns = `
             <div style="display:flex; flex-direction:column; gap:10px;">
-                <a href="${dropoffMapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                <a href="${dropoffMap}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-flag-checkered"></i> นำทางไปจุดส่ง
                 </a>
                 <button class="btn btn-finish" onclick="showFinishConfirm('${job.job_id}')">
                     <i class="fa-solid fa-camera"></i> ถ่ายรูปส่งงาน
                 </button>
-            </div>
-            `;
+            </div>`;
         }
 
-        // Render HTML สุดท้าย
+        // Render HTML
         el.innerHTML = `
         <div class="card" style="border-left:5px solid ${statusColor};">
             <h2 style="color:${statusColor}; margin-top:0;">${statusText}</h2>
@@ -678,13 +670,12 @@
             <h3 style="margin-bottom:5px;">${job.bill_id}</h3>
             <div style="color:#666; font-size:12px; margin-bottom:10px;">Order #${job.order_no || '-'}</div>
         
-            <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b> ${job.extra_fee > 0 ? `<span style="color:red; font-size:12px;">(+เปลี่ยนที่ ${job.extra_fee})</span>` : ''}</p>
+            <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b> ${job.extra_fee > 0 ? `<span style="color:red; font-size:12px;">(+เพิ่ม ${job.extra_fee})</span>` : ''}</p>
             <p>📍 รับ: ${job.pickup_name}</p>
             <hr style="border:0; border-top:1px dashed #ddd; margin:10px 0;">
             ${contactInfo}
             <div style="margin-top:15px;">${btns}</div>
-        </div>
-        `;
+        </div>`;
     }
 
     function confirmPoolDispatchSelected() {
