@@ -1818,23 +1818,48 @@
         renderFinance(tab);
     }
 
-    // ฟังก์ชัน Copy ข้อความ
+    // [แก้ไข] ฟังก์ชัน Copy ที่รองรับมือถือและ Telegram WebApp
     function copyText(text) {
-        // ดึงเฉพาะเลขบัญชีและชื่อ (ลบ | ออก) เพื่อให้ Copy ไปวางแอปธนาคารง่ายๆ
-        const cleanText = text.replace('|', '\n'); 
-        navigator.clipboard.writeText(cleanText).then(() => {
-            alert("คัดลอกเลขบัญชีแล้ว!");
-        }).catch(err => {
-            console.error('Copy failed', err);
-            // Fallback
-            const el = document.createElement('textarea');
-            el.value = cleanText;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            alert("คัดลอกเลขบัญชีแล้ว!");
-        });
+        // แยกเอาเฉพาะเลขบัญชีออกมา (สมมติ format คือ "BANK - 123456... ชื่อ: ...")
+        // แต่ถ้าจะ copy ทั้งหมดก็ใช้ text ได้เลย
+        
+        // วิธีที่ 1: ใช้ Clipboard API (มาตรฐานใหม่)
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("✅ คัดลอกเรียบร้อย!");
+            }).catch(err => {
+                console.error('Async: Could not copy text: ', err);
+                fallbackCopyText(text); // ถ้าไม่ได้ให้ใช้วิธีสำรอง
+            });
+        } else {
+            fallbackCopyText(text); // ใช้วิธีสำรองทันที
+        }
+    }
+
+    // วิธีสำรอง (ใช้ textarea แบบดั้งเดิม ชัวร์สุดใน Webview เก่าๆ)
+    function fallbackCopyText(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // ทำให้มองไม่เห็นและไม่กระทบหน้าจอ
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if(successful) alert("✅ คัดลอกเรียบร้อย!");
+            else alert("❌ คัดลอกไม่สำเร็จ (กรุณากดค้างที่ข้อความเพื่อคัดลอกเอง)");
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+            alert("❌ เครื่องไม่รองรับการคัดลอกอัตโนมัติ");
+        }
+
+        document.body.removeChild(textArea);
     }
 
     // ฟังก์ชันดำเนินการถอนเงิน (พร้อมอัปโหลดรูป)
