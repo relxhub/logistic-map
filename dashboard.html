@@ -458,6 +458,12 @@
         if (role === 'WAREHOUSE') {
             try { renderWarehouseList(data.warehouse_jobs || []); } catch(e){}
         }
+
+        if (role === 'RIDER') {
+            try { renderRiderJob(data.current_job); } catch(e){ console.error("Render Job Error:", e); }
+            try { renderWallet(); } catch(e){ console.error("Render Wallet Error:", e); }
+            try { renderFullHistory(); } catch(e){}
+        }
     }
 
     function setupPickupSelector() {
@@ -585,8 +591,9 @@
         let extraHtml = '';
 
         // ✅ แก้ไขลิงก์แผนที่ให้ถูกต้อง (ใช้ Google Maps Link มาตรฐาน)
-        const pickupMap = `https://www.google.com/maps/search/?api=1&query=${job.pickup_lat},${job.pickup_lng}`;
-        const dropoffMap = `https://www.google.com/maps/search/?api=1&query=${job.dropoff_lat},${job.dropoff_lng}`;
+        // ใช้ ${} ให้ถูกต้อง
+        const pickupMap = `http://googleusercontent.com/maps.google.com/maps?q=${job.pickup_lat},${job.pickup_lng}`;
+        const dropoffMap = `http://googleusercontent.com/maps.google.com/maps?q=${job.dropoff_lat},${job.dropoff_lng}`;
 
         // --- ส่วน Contact Info ---
         let contactInfo = '';
