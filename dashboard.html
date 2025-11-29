@@ -282,12 +282,23 @@
         <div class="form-group">
             <label class="form-label">ธนาคาร</label>
             <select id="bank-name">
+                <option value="" disabled selected>-- เลือกธนาคาร --</option>
                 <option value="KBANK">กสิกรไทย (KBANK)</option>
                 <option value="SCB">ไทยพาณิชย์ (SCB)</option>
                 <option value="BBL">กรุงเทพ (BBL)</option>
                 <option value="KTB">กรุงไทย (KTB)</option>
                 <option value="TTB">ทหารไทยธนชาต (TTB)</option>
-                <option value="PROMPTPAY">พร้อมเพย์</option>
+                <option value="BAY">กรุงศรีอยุธยา (BAY)</option>
+                <option value="GSB">ออมสิน (GSB)</option>
+                <option value="BAAC">ธ.ก.ส. (BAAC)</option>
+                <option value="UOB">ยูโอบี (UOB)</option>
+                <option value="CIMB">ซีไอเอ็มบี ไทย (CIMB)</option>
+                <option value="LHBANK">แลนด์ แอนด์ เฮ้าส์ (LH Bank)</option>
+                <option value="TISCO">ทิสโก้ (TISCO)</option>
+                <option value="KKP">เกียรตินาคินภัทร (KKP)</option>
+                <option value="GHB">อาคารสงเคราะห์ (GHB)</option>
+                <option value="ICBC">ไอซีบีซี (ICBC)</option>
+                <option value="PROMPTPAY">พร้อมเพย์ (PromptPay)</option>
             </select>
         </div>
         <div class="form-group">
@@ -1756,7 +1767,7 @@
                     
                     <div class="card-row" style="background:#f8f9fa; padding:10px; border-radius:8px; margin:5px 0; border:1px dashed #ddd; display:flex; justify-content:space-between; align-items:center;">
                         <div>🏦 <b>${t.bank_info}</b></div>
-                        <button class="btn-icon" onclick="copyText('${t.bank_info}')" style="background:#e0e0e0; border-radius:5px; width:30px; height:30px; display:flex; align-items:center; justify-content:center;">
+                        <button class="btn-icon" onclick="copyText('${t.bank_info.replace(/\n/g, ' ')}')" style="background:#e0e0e0; border-radius:5px; width:40px; height:30px; display:flex; align-items:center; justify-content:center;">
                             <i class="fa-solid fa-copy"></i>
                         </button>
                     </div>
