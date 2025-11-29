@@ -2047,16 +2047,17 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // [ไม้ตาย] ฟังก์ชันเปลี่ยนปุ่มเป็นลิงก์โทรออก (Inline)
+    // [แก้ไขล่าสุด] ฟังก์ชันเปลี่ยนปุ่มเป็นลิงก์โทรออก (เพิ่ม target="_top")
     function showInlineCall(cleanPhone, originalPhone) {
         const el = document.getElementById('phone-wrapper');
         if(!el) return;
 
-        // เปลี่ยนเนื้อหาใน div เป็นปุ่มลิงก์ <a> ของจริง (Browser บล็อกไม่ได้แน่นอน)
+        // เปลี่ยนเนื้อหาใน div
+        // 🔴 จุดสำคัญที่แก้: เพิ่ม target="_top" และ onclick เพื่อบังคับเปิด
         el.innerHTML = `
             <div style="font-size:14px; margin-bottom:5px; color:var(--primary); font-weight:bold;">ยืนยันการโทร?</div>
             <div style="display:flex; gap:10px;">
-                <a href="tel:${cleanPhone}" class="btn btn-primary" style="flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px;">
+                <a href="tel:${cleanPhone}" target="_top" class="btn btn-primary" style="flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px;">
                     <i class="fa-solid fa-phone-volume"></i> โทรเลย
                 </a>
                 
