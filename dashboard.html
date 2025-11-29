@@ -1162,10 +1162,19 @@
         } else if (modalActionType === 'pool_cancel') {
             sendAction('pool_cancel', pendingPayload);
 
-        // 10. ✅ โทรออก (ส่วนที่เพิ่มใหม่)
+        // 10. ✅ โทรออก (แก้ไขใหม่: ใช้ Ghost Link + ล้างเบอร์โทร)
         } else if (modalActionType === 'call_phone') {
             if(pendingPhone) {
-                window.location.href = `tel:${pendingPhone}`;
+                // ล้างเบอร์โทรให้เหลือแต่ตัวเลขและ + (เช่น 081-123-4567 -> 0811234567)
+                const cleanNumber = pendingPhone.replace(/[^0-9+]/g, '');
+                
+                // สร้างลิงก์ <a> ขึ้นมาหลอกๆ แล้วสั่งกดคลิก
+                const a = document.createElement('a');
+                a.href = `tel:${cleanNumber}`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click(); // สั่งกด
+                setTimeout(() => document.body.removeChild(a), 100); // ลบทิ้ง
             } else {
                 alert("ไม่พบเบอร์โทรศัพท์");
             }
@@ -1173,7 +1182,10 @@
         
         closeModal();
         // คืนค่าปุ่ม Copy ให้แสดงเหมือนเดิมหลังจากปิด Modal
-        setTimeout(() => document.querySelector('.btn-copy').style.display = 'block', 300);
+        setTimeout(() => {
+            const btnCopy = document.querySelector('.btn-copy');
+            if(btnCopy) btnCopy.style.display = 'block';
+        }, 300);
     }
     
     function copyShippingPrice() {
