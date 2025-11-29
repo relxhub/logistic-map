@@ -1002,18 +1002,44 @@
         openMap('edit_dest');
     }
 
+    // [แก้ไข] ฟังก์ชันเปลี่ยนปลายทาง (ป้องกัน NaN)
     function confirmEditDestPreview() {
         if (!currentEditJobData || !tempLat) return;
-        const oldPrice = parseFloat(currentEditJobData.price);
-        const newDist = calcDist(currentEditJobData.pickup_lat, currentEditJobData.pickup_lng, tempLat, tempLng);
-        const newPurePrice = Math.ceil(config.base + (newDist * config.km));
-        const fee = (currentEditJobData.status === 'PICKED_UP') ? config.change_fee : 0;
+
+        // 1. แปลงค่าทุกอย่างให้เป็นตัวเลขก่อนคำนวณ (กันเหนียว)
+        const oldPrice = parseFloat(currentEditJobData.price) || 0;
         
+        // ดึง Config และใส่ค่า Default ถ้าหาไม่เจอ
+        const basePrice = (config && config.base) ? parseFloat(config.base) : 40;
+        const pricePerKm = (config && config.km) ? parseFloat(config.km) : 10;
+        const changeFee = (config && config.change_fee) ? parseFloat(config.change_fee) : 30;
+
+        // 2. คำนวณระยะทางใหม่
+        const newDist = calcDist(
+            parseFloat(currentEditJobData.pickup_lat), 
+            parseFloat(currentEditJobData.pickup_lng), 
+            parseFloat(tempLat), 
+            parseFloat(tempLng)
+        );
+
+        if (isNaN(newDist)) return alert('❌ คำนวณระยะทางผิดพลาด (ลองปักหมุดใหม่)');
+
+        // 3. คำนวณราคาพื้นฐานใหม่
+        const newPurePrice = Math.ceil(basePrice + (newDist * pricePerKm));
+
+        // 4. ตรวจสอบสถานะงานเพื่อคิดค่าธรรมเนียม
+        const isPickedUp = (currentEditJobData.status === 'PICKED_UP');
+        const fee = isPickedUp ? changeFee : 0;
+
         let finalPrice = 0;
         let priceDetailHtml = '';
 
-        if (fee > 0) {
+        if (isPickedUp) {
+            // กรณีรับของแล้ว: คิดค่าธรรมเนียม + ส่วนต่าง (ถ้าแพงขึ้น)
+            // สูตร: ถ้าราคาใหม่แพงกว่า -> คิดราคาใหม่ + 30
+            //       ถ้าราคาใหม่ถูกกว่า -> ยึดราคาเดิม + 30 (ไม่คืนเงินส่วนต่าง)
             finalPrice = (newPurePrice > oldPrice) ? (newPurePrice + fee) : (oldPrice + fee);
+            
             pendingCopyText = `ค่าจัดส่ง : ${finalPrice - fee} บาท\nค่าเปลี่ยนที่อยู่ : ${fee} บาท\nรวมค่าจัดส่ง : ${finalPrice} บาท`;
             priceDetailHtml = `
             <div class="modal-line"><span>💶 ค่าส่งเดิม:</span> <span>${oldPrice} บาท</span></div>
@@ -1023,7 +1049,9 @@
             <div class="modal-line" style="font-size:16px; color:var(--primary);"><span>💰 ยอดรวมใหม่:</span> <b>${finalPrice} บาท</b></div>
             `;
         } else {
+            // กรณีของยังไม่ออก: คิดราคาตามจริงใหม่เลย (ไม่มีค่าปรับ)
             finalPrice = newPurePrice;
+            
             pendingCopyText = `ค่าจัดส่ง : ${finalPrice} บาท`;
             priceDetailHtml = `
             <div class="modal-line"><span>💶 ค่าส่งเดิม:</span> <span>${oldPrice} บาท</span></div>
@@ -1036,7 +1064,6 @@
         modalActionType = 'edit_dest';
         pendingPayload = { job_id: currentJobId, lat: tempLat, lng: tempLng };
         
-        // Show simplified confirmation (User wants complete info on RIDER side, but here just confirm price)
         const content = `
         <div class="modal-line"><span>📄 บิล:</span> <b>${currentEditJobData.bill_id}</b></div>
         <div class="modal-line"><span>🏁 จุดส่งใหม่:</span> <span>(พิกัดที่ปัก)</span></div>
