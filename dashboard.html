@@ -701,10 +701,11 @@
             `;
         }).join('');
 
-        // 2. Logic ปุ่ม Batch ด้านล่าง
+        // 2. Logic ปุ่ม Batch (ด้านล่าง)
         const count = selectedPoolJobs.size;
         let batchHtml = '';
         
+        // ถ้ามีการเลือกงาน -> แสดงปุ่ม "ปล่อยงานที่เลือก"
         if (count > 0) {
             batchHtml = `
             <div style="padding: 10px 0; position:sticky; bottom:0; background:var(--bg); z-index:100; border-top:1px solid #ddd;">
@@ -713,9 +714,10 @@
                 </button>
             </div>`;
         } else {
-            // ปุ่มปล่อยทั้งหมดแบบเดิม (แสดงเมื่อไม่ได้เลือกอะไรเลย)
-            // เช็คว่ามีงานพร้อมปล่อยอย่างน้อย 1 งานไหม
+            // ถ้าไม่เลือก -> แสดงปุ่ม "ปล่อยทั้งหมดที่พร้อม" (Auto Select Ready)
             const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
+            
+            // ✅ แก้ไข: แสดงเฉพาะเมื่อมีงานพร้อมเท่านั้น (ซ่อนถ้าไม่มีงานพร้อม)
             if(readyCount > 0) {
                 batchHtml = `
                 <div style="padding: 10px 0;">
@@ -726,6 +728,7 @@
             }
         }
 
+        // ✅ เอาปุ่ม "ปล่อยงานทั้งหมด" แบบเก่า (ที่อยู่นอกสุด) ออกไปเลย ไม่ต้องใส่กลับมา
         el.innerHTML = html + batchHtml;
     }
 
