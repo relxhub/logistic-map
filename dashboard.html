@@ -134,10 +134,12 @@
     </div>
     
     <div class="form-group" style="background:#e8f5e9; padding:10px; border-radius:8px;">
-        <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ลูกค้าเก่า (ค้นหา)</label>
-        <select id="customer-search-select" onchange="selectSavedCustomer(this.value)">
-            <option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>
-        </select>
+        <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ค้นหาลูกค้าเก่า</label>
+        
+        <input type="text" id="customer-search-input" list="customer-list" placeholder="พิมพ์ชื่อเพื่อค้นหา..." onchange="onCustomerSelected(this)" style="background:white;">
+        
+        <datalist id="customer-list">
+            </datalist>
     </div>
 
     <div class="form-group">
@@ -1120,14 +1122,15 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // 1. โหลดรายชื่อลง Dropdown (เรียกตอน renderMenu)
+    // 1. โหลดรายชื่อลง Datalist
     function setupCustomerSearch() {
         const list = data.saved_customers || [];
-        const sel = document.getElementById('customer-search-select');
-        if(!sel) return;
+        const dl = document.getElementById('customer-list');
+        if(!dl) return;
         
-        sel.innerHTML = '<option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>' + 
-                        list.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        // สร้าง option สำหรับ datalist (value คือชื่อที่โชว์, data-id เก็บ ID ไว้)
+        // หมายเหตุ: datalist มาตรฐานเก็บ custom attribute ยาก เราจะใช้เทคนิค map ชื่อกับ id ทีหลัง
+        dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
     }
 
     // 2. เมื่อเลือกลูกค้า -> เติมข้อมูลลงฟอร์ม
@@ -1148,6 +1151,22 @@
         
         // Focus ไปที่ช่องเลขบิล (เพราะยังไงก็ต้องกรอกใหม่)
         document.getElementById('job-bill-id').focus();
+    }
+
+    // 2. เมื่อเลือกรายชื่อจาก Datalist
+    function onCustomerSelected(input) {
+        const val = input.value;
+        if(!val) return;
+
+        // หา Customer object จากชื่อที่เลือก (Format: "Name (Receiver)")
+        const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
+        
+        if(customer) {
+            // เรียกใช้ฟังก์ชันเติมข้อมูลเดิม
+            selectSavedCustomer(customer.id);
+            // ล้างช่องค้นหา (Optional: ล้างเพื่อให้รู้ว่าเลือกแล้ว หรือจะค้างไว้ก็ได้)
+            // input.value = ''; 
+        }
     }
 
     // 3. กดบันทึก -> แสดง Modal
