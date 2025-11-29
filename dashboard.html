@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -274,6 +275,33 @@
     <div id="history-list"></div>
 </div>
 
+<div id="view-report" class="view">
+    <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
+    <h3>📊 สรุปภาพรวม (7 วัน)</h3>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
+        <div class="card" style="text-align:center; padding:15px; margin:0; border-left:4px solid var(--primary);">
+            <div style="font-size:12px; color:#888;">รายได้รวม</div>
+            <div style="font-size:20px; font-weight:bold; color:var(--primary);" id="report-total-rev">-</div>
+        </div>
+        <div class="card" style="text-align:center; padding:15px; margin:0; border-left:4px solid var(--warning);">
+            <div style="font-size:12px; color:#888;">งานทั้งหมด</div>
+            <div style="font-size:20px; font-weight:bold;" id="report-total-jobs">-</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <canvas id="revenueChart" style="width:100%; height:250px;"></canvas>
+    </div>
+
+    <div style="margin-top:20px;">
+        <button class="btn btn-primary" onclick="if(confirm('ส่งไฟล์ Report เข้าแชท?')) sendAction('export_report')">
+            <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด Excel (เดือนนี้)
+        </button>
+        <p style="text-align:center; font-size:11px; color:#999; margin-top:5px;">ไฟล์ CSV จะถูกส่งไปที่ห้องแชทของคุณ</p>
+    </div>
+</div>
+
 <div id="map-overlay">
     <div class="map-header-bar"><button class="btn btn-outline" onclick="closeMap()"><i class="fa-solid fa-arrow-left"></i></button><input id="search-box-overlay" type="text" placeholder="🔍 ค้นหา..." /></div>
     <div id="map-fullscreen"></div>
@@ -351,6 +379,7 @@
         }
         if (['SUPERADMIN', 'SUPERVISOR'].includes(role)) {
             menuHtml += `<div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>`;
+            menuHtml += `<div class="menu-item" onclick="nav('report')"><i class="fa-solid fa-chart-line"></i><br>รายงาน</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
@@ -398,6 +427,7 @@
             try { setupPickupSelector(); } catch(e){ console.error(e); }
             try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFullHistory(); } catch(e){ console.error(e); }
+            try { renderReport(); } catch(e){}
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
             try { renderCustomerList(); } catch(e){}
@@ -1445,7 +1475,70 @@
         setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
     }
 
+    // [เพิ่ม] ฟังก์ชันวาดกราฟ
+    function renderReport() {
+        const stats = data.analytics || [];
+        if(stats.length === 0) return;
+
+        // 1. ใส่ข้อมูลตัวเลขรวม
+        const totalRev = stats.reduce((sum, d) => sum + d.revenue, 0);
+        const totalJobs = stats.reduce((sum, d) => sum + d.count, 0);
     
+        document.getElementById('report-total-rev').innerText = totalRev.toLocaleString() + " ฿";
+        document.getElementById('report-total-jobs').innerText = totalJobs + " งาน";
+
+        // 2. เตรียมข้อมูลกราฟ
+        const labels = stats.map(d => d.date);
+        const revenues = stats.map(d => d.revenue);
+        const counts = stats.map(d => d.count);
+
+        // 3. วาดกราฟ (Chart.js)
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+    
+        // ถ้ามีกราฟเก่าให้ทำลายก่อน (ป้องกันทับซ้อน)
+        if(window.myChart) window.myChart.destroy();
+
+        window.myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'รายได้ (บาท)',
+                        data: revenues,
+                        borderColor: '#00B900',
+                        backgroundColor: 'rgba(0, 185, 0, 0.1)',
+                        yAxisID: 'y',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'จำนวนงาน',
+                        data: counts,
+                        borderColor: '#ffc107',
+                        backgroundColor: 'transparent',
+                        yAxisID: 'y1',
+                        borderDash: [5, 5],
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: { type: 'linear', display: true, position: 'left', beginAtZero: true },
+                    y1: { type: 'linear', display: false, position: 'right', grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    // เพิ่มการเรียกใช้ใน init (บรรทัด 509 เดิม)
+    // if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
+    //     ...
+    //     try { renderReport(); } catch(e){} // <--- เพิ่มบรรทัดนี้
+    // }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', () => {
