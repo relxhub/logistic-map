@@ -168,14 +168,12 @@
     
     <div class="form-group" style="background:#e8f5e9; padding:10px; border-radius:8px;">
         <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ค้นหาลูกค้าเก่า</label>
-        
         <input type="text" id="customer-search-input" list="customer-list" placeholder="พิมพ์ชื่อเพื่อค้นหา..." onchange="onCustomerSelected(this)" style="background:white; width:100%; border:1px solid #ddd; padding:10px; border-radius:8px;">
-        
         <datalist id="customer-list"></datalist>
     </div>
-
+    
     <div class="form-group">
-        <label class="form-label">3. ปลายทาง (ลูกค้า)</label>
+        <label class="form-label">2. ปลายทาง (ลูกค้า)</label>
         <div style="display:flex; gap:5px;">
             <input type="text" id="job-search-input" placeholder="🔍 ค้นหา/ปักหมุด..." onclick="openMap('job')" readonly />
             <button class="btn btn-primary" style="width:auto;" onclick="openMap('job')"><i class="fa-solid fa-map"></i></button>
@@ -184,7 +182,7 @@
     </div>
     
     <div class="form-group">
-        <label class="form-label">4. รายละเอียด</label>
+        <label class="form-label">3. รายละเอียดลูกค้า</label>
         <input type="text" id="job-bill-id" placeholder="เลขบิล / Order ID" style="margin-bottom:5px;" enterkeyhint="next" />
         <div style="display:flex; gap:5px; margin-bottom:5px;">
             <input type="text" id="job-recv-name" placeholder="ชื่อผู้รับ" style="flex:1;" enterkeyhint="next" />
@@ -889,6 +887,12 @@
     function confirmAction() {
         if (modalActionType === 'create') {
             sendAction('create_job', pendingPayload);
+        } else if (modalActionType === 'save_customer') { // ✅ เพิ่มอันนี้
+            const name = document.getElementById('save-customer-name').value;
+            if(!name) return alert('กรุณาตั้งชื่อ');
+            pendingPayload.save_name = name;
+            sendAction('save_customer', pendingPayload);
+            tg.close();
         } else if (modalActionType === 'edit_dest') {
             sendAction('edit_destination', pendingPayload);
         } else if (modalActionType === 'finish_job') {
@@ -906,15 +910,6 @@
             sendAction('release_pool_selected', pendingPayload);
         } else if (modalActionType === 'pool_cancel') {
             sendAction('pool_cancel', pendingPayload);
-        } else if (modalActionType === 'save_customer') {
-            const saveName = document.getElementById('save-customer-name').value;
-            if(!saveName) {
-                alert('กรุณาตั้งชื่อที่จะบันทึก');
-                return; // ไม่ปิด Modal
-            }
-            // เพิ่มชื่อเข้าไปใน payload
-            pendingPayload.save_name = saveName;
-            sendAction('save_customer', pendingPayload);
         }
         
         closeModal();
@@ -1164,12 +1159,8 @@
     function setupCustomerSearch() {
         const list = data.saved_customers || [];
         const dl = document.getElementById('customer-list');
-        
-        // ถ้าหา element ไม่เจอ ให้จบการทำงาน (กัน Error)
         if(!dl) return;
-        
-        // สร้าง option สำหรับ datalist
-        // Format: "ชื่อที่บันทึก (ชื่อผู้รับ)"
+        // สร้าง Option ให้ Datalist
         dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
     }
 
@@ -1194,19 +1185,25 @@
     }
 
     // 2. เมื่อเลือกรายชื่อจาก Datalist
-    function onCustomerSelected(input) {
-        const val = input.value;
-        if(!val) return;
+    function promptSaveCustomer() {
+        const rName = document.getElementById('job-recv-name').value;
+        const rPhone = document.getElementById('job-recv-phone').value;
+        if(!tempLat || !rName) { alert('กรุณาปักหมุดและกรอกชื่อผู้รับก่อน'); return; }
 
-        // หา Customer object จากชื่อที่เลือก (Format: "Name (Receiver)")
-        const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
-        
-        if(customer) {
-            // เรียกใช้ฟังก์ชันเติมข้อมูลเดิม
-            selectSavedCustomer(customer.id);
-            // ล้างช่องค้นหา (Optional: ล้างเพื่อให้รู้ว่าเลือกแล้ว หรือจะค้างไว้ก็ได้)
-            // input.value = ''; 
-        }
+        modalActionType = 'save_customer';
+        pendingPayload = { receiver_name: rName, receiver_phone: rPhone, lat: tempLat, lng: tempLng };
+
+        const content = `
+            <div class="form-group">
+                <label class="form-label">ตั้งชื่อที่บันทึก (เช่น รหัสลูกค้า)</label>
+                <input type="text" id="save-customer-name" placeholder="ตัวอย่าง: รหัสลูกค้า A01" style="width:100%; border:1px solid #ccc; padding:8px;">
+            </div>
+        `;
+        document.getElementById('modal-title').innerText = "💾 บันทึกข้อมูลลูกค้า";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
     }
 
     // 3. กดบันทึก -> แสดง Modal
