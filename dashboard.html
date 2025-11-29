@@ -453,14 +453,41 @@
             }, 1000);
 
         } else if(job.status === 'ASSIGNED') {
-             btns = `
-            <a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-primary">🗺️ นำทางไปจุดรับ</a>
-            <button class="btn btn-warning" onclick="sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">📦 รับของแล้ว</button>
-            <button class="btn btn-danger" style="margin-top:10px;" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button>`;
-        } else if (job.status === 'PICKED_UP') {
+            
+            // สร้างลิงก์ Google Map แบบนำทาง (Destination)
+            // ใช้ api=1&destination=lat,lng เพื่อให้เปิดแอป Map แล้วกดนำทางได้เลย
+            const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
+
             btns = `
-            <a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-primary">🏁 นำทางไปจุดส่ง</a>
-            <button class="btn btn-primary" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">📸 ถ่ายรูปส่งงาน</button>`;
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="${mapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                    <i class="fa-solid fa-location-arrow"></i> นำทางไปจุดรับ
+                </a>
+
+                <button class="btn btn-warning" onclick="if(confirm('ยืนยันว่าได้รับของเรียบร้อยแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
+                    <i class="fa-solid fa-box-open"></i> รับของแล้ว
+                </button>
+
+                <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')">
+                    <i class="fa-solid fa-ban"></i> ยกเลิกงาน
+                </button>
+            </div>
+            `;
+
+        } else if (job.status === 'PICKED_UP') {
+             // ... (โค้ดส่วน Picked Up คงเดิม หรือปรับ Map URL ให้เป็นจุดส่ง dropoff_lat/lng)
+             const dropoffMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
+             
+             btns = `
+             <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="${dropoffMapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                    <i class="fa-solid fa-flag-checkered"></i> นำทางไปจุดส่ง
+                </a>
+                <button class="btn btn-success" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">
+                    <i class="fa-solid fa-camera"></i> ถ่ายรูปส่งงาน
+                </button>
+             </div>
+             `;
         }
 
         el.innerHTML = `
