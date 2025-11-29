@@ -1119,6 +1119,7 @@
     }
 
     // --- UTILS & MAP ---
+    // [แก้ไข] ปิด Modal แล้วคืนค่าปุ่มต่างๆ ให้เหมือนเดิม
     function closeModal() { 
         document.getElementById('confirm-modal').style.display = 'none'; 
         
@@ -2004,26 +2005,29 @@
         }, 2000);
     }
 
-    // [แก้ไข] ฟังก์ชันเรียก Modal โทรศัพท์ (แบบปุ่ม Link จริง 100%)
+    // [แก้ไขล่าสุด] ฟังก์ชันเรียก Modal โทรศัพท์ (ใช้ปุ่ม Link จริง 100%)
     function promptCall(phone) {
-        // 1. ล้างเบอร์ให้สะอาด (เอาขีด/วรรคออก)
+        // 1. ล้างเบอร์ให้สะอาด (เอาขีด/วรรคออก เหลือแต่ตัวเลขและ +)
         const cleanNumber = phone.replace(/[^0-9+]/g, '');
         
-        // 2. ซ่อนปุ่มยืนยันอันเก่า (เพราะเราจะใช้ปุ่มใหม่ในเนื้อหาแทน)
-        // ปุ่มยืนยันคือตัวที่ 2 ใน modal-actions (index 1)
+        // 2. ซ่อนปุ่ม "ยืนยัน" อันเก่าของ Modal (เพราะเราจะไม่ใช้มันสั่งโทรแล้ว)
         const actionBtns = document.querySelectorAll('.modal-actions button');
         if(actionBtns.length >= 2) {
-            actionBtns[1].style.display = 'none'; // ซ่อนปุ่ม "ยืนยัน"
-            actionBtns[0].innerText = "ปิด";      // เปลี่ยนปุ่ม "แก้ไข/ยกเลิก" เป็น "ปิด"
+            actionBtns[1].style.display = 'none'; // ซ่อนปุ่มยืนยัน (ตัวขวา)
+            actionBtns[0].innerText = "ปิด";      // เปลี่ยนปุ่มยกเลิก (ตัวซ้าย) เป็น "ปิด"
         }
-        document.querySelector('.btn-copy').style.display = 'none'; // ซ่อนปุ่ม Copy
+        
+        // ซ่อนปุ่ม Copy ด้วย (ถ้ามี)
+        const btnCopy = document.querySelector('.btn-copy');
+        if(btnCopy) btnCopy.style.display = 'none';
 
         // 3. สร้างเนื้อหา Modal พร้อมปุ่ม Link จริงๆ (<a href="tel:...">)
+        // ปุ่มนี้คือกุญแจสำคัญ! มันเป็น <a> ไม่ใช่ <button> Browser จึงยอมให้โทร
         const content = `
             <div style="text-align:center; padding:20px;">
                 <div style="font-size:24px; font-weight:bold; color:#333; margin-bottom:20px;">${phone}</div>
                 
-                <a href="tel:${cleanNumber}" class="btn btn-primary" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:10px; font-size:18px; padding:15px;">
+                <a href="tel:${cleanNumber}" class="btn btn-primary" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:10px; font-size:18px; padding:15px; border-radius:10px;">
                     <i class="fa-solid fa-phone-volume"></i> โทรออกทันที
                 </a>
             </div>
