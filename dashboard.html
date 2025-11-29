@@ -258,6 +258,23 @@
     <div id="rider-job-card"></div>
 </div>
 
+<div id="view-wallet" class="view">
+    <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
+    <h3>💰 กระเป๋าเงินของฉัน</h3>
+    
+    <div class="card" style="text-align:center; padding:30px; background: linear-gradient(135deg, #00B900 0%, #008f00 100%); color:white;">
+        <div style="font-size:14px; opacity:0.9;">ยอดเงินคงเหลือ</div>
+        <div style="font-size:42px; font-weight:bold; margin:10px 0;" id="wallet-balance">0.00</div>
+        <div style="font-size:14px;">บาท</div>
+        <button class="btn" style="background:white; color:#00B900; margin-top:15px; border-radius:20px;" onclick="requestWithdraw()">
+            💸 แจ้งถอนเงิน
+        </button>
+    </div>
+
+    <h4>⏳ รายการล่าสุด</h4>
+    <div id="wallet-history-list"></div>
+</div>
+
 <div id="view-history" class="view">
     <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
     <h3>📜 ประวัติงาน</h3>
@@ -435,8 +452,12 @@
         }
 
         if (role === 'RIDER') {
-            try { renderRiderJob(data.current_job); } catch(e){}
-            try { renderFullHistory(); } catch(e){} 
+            menuHtml += `
+                <div class="menu-item" onclick="nav('rider')"><i class="fa-solid fa-motorcycle"></i><br>งานปัจจุบัน</div>
+                <div class="menu-item" onclick="nav('wallet')"><i class="fa-solid fa-wallet"></i><br>กระเป๋าเงิน</div> <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
+            `;
+            // navHtml ก็เพิ่มปุ่มเหมือนกันถ้าต้องการ (หรือเอาไว้แค่เมนูหลักก็ได้ครับ)
+            try { renderWallet(); } catch(e){}
         }
 
         if (role === 'WAREHOUSE') {
@@ -1539,6 +1560,55 @@
     //     ...
     //     try { renderReport(); } catch(e){} // <--- เพิ่มบรรทัดนี้
     // }
+
+    // [เพิ่ม] ฟังก์ชัน Render หน้า Wallet
+    function renderWallet() {
+        const w = data.wallet;
+        if(!w) return;
+
+        // 1. แสดงยอดเงิน
+        document.getElementById('wallet-balance').innerText = w.balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+        // 2. แสดงรายการ
+        const el = document.getElementById('wallet-history-list');
+        if(w.history.length === 0) {
+            el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการ</div>';
+            return;
+        }
+
+        el.innerHTML = w.history.map(t => {
+            const isIncome = t.type === 'INCOME';
+            const color = isIncome ? '#00B900' : '#dc3545';
+            const sign = isIncome ? '+' : '';
+            const icon = isIncome ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+
+            return `
+            <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <i class="fa-solid ${icon}" style="font-size:24px; color:${color};"></i>
+                    <div>
+                        <div style="font-weight:bold;">${t.note || t.type}</div>
+                        <div style="font-size:10px; color:#888;">${t.date}</div>
+                    </div>
+                </div>
+                <div style="font-weight:bold; color:${color}; font-size:16px;">
+                    ${sign}${t.amount.toLocaleString()} ฿
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    // [เพิ่ม] ฟังก์ชันกดถอนเงิน (เตรียมไว้ก่อน)
+    function requestWithdraw() {
+        const balance = parseFloat(document.getElementById('wallet-balance').innerText.replace(/,/g, ''));
+        if(balance <= 0) return alert('ยอดเงินไม่พอสำหรับการถอน');
+    
+        // เดี๋ยวเรามาทำ Backend ส่วนนี้กันในขั้นตอนต่อไป
+        if(confirm(`ต้องการแจ้งถอนเงินจำนวน ${balance.toLocaleString()} บาท?`)) {
+            sendAction('withdraw_request', { amount: balance });
+        }
+    }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', () => {
