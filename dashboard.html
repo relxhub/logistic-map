@@ -139,7 +139,11 @@
     <button class="btn btn-primary" id="btn-submit-job" onclick="submitJob()">🚀 สรุปและสร้างงาน</button>
 </div>
 
-<div id="view-pool" class="view"><h3>📦 Pool</h3><div id="pool-list"></div><button class="btn btn-primary" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button></div>
+<div id="view-pool" class="view">
+    <h3>📦 Pool (<span id="pool-count">0</span>)</h3>
+    <div id="pool-list"></div>
+    <button class="btn btn-primary" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button>
+</div>
 
 <div id="view-warehouse" class="view">
     <h3>📦 ออเดอร์ (รอเตรียมของ)</h3>
@@ -598,28 +602,36 @@
 
     function renderPoolList(list) {
         const el = document.getElementById('pool-list');
-        if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; return; }
-        
-        // นับเฉพาะงานที่พร้อมปล่อย (PENDING_POOL)
-        const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
-        document.getElementById('pool-count').innerText = readyCount;
+        // อัปเดตตัวเลข (ตอนนี้ HTML มี id นี้แล้ว จะไม่ Error)
+        if(document.getElementById('pool-count')) {
+            document.getElementById('pool-count').innerText = list.length;
+        }
+
+        if(list.length === 0) { 
+            el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; 
+            return; 
+        }
 
         el.innerHTML = list.map(j => {
             let actionBtn = '';
             
-            // ✅ Logic ล็อคปุ่ม
+            // ✅ Logic เลือกสีปุ่มตามสถานะ
             if (j.status === 'PREPARING') {
-                // ปุ่มสีเทา กดไม่ได้
-                actionBtn = `<button class="btn btn-outline btn-sm" disabled style="color:#999; border-color:#ddd;">⏳ กำลังเตรียมของ...</button>`;
+                // ของยังไม่พร้อม -> ปุ่มสีเทา (กดไม่ได้)
+                actionBtn = `<button class="btn btn-outline btn-sm" disabled style="color:#999; border-color:#ddd; cursor:not-allowed;">⏳ รอคลังเตรียมของ</button>`;
             } else {
-                // ปุ่มปกติ (พร้อมปล่อย)
+                // ของพร้อมแล้ว -> ปุ่มสีน้ำเงิน (ปล่อยงานได้)
                 actionBtn = `<button class="btn btn-primary btn-sm" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">🚀 ปล่อยงาน</button>`;
             }
 
+            // ✅ แสดงเลข Order (#...) และสถานะ
             return `
             <div class="card" style="border-left:4px solid ${j.status === 'PREPARING' ? '#ccc' : '#ffc107'};">
-                <div class="card-header">📝 #${j.order_no} | ${j.bill_id}</div>
+                <div class="card-header">
+                    <span>📝 #${j.order_no || '-'} | ${j.bill_id}</span>
+                </div>
                 <div class="card-row">📍 รับ: ${j.pickup}</div>
+                <div class="card-row">🏁 ส่ง: ${j.dropoff_lat.toFixed(4)}, ${j.dropoff_lng.toFixed(4)}</div>
                 <div class="card-actions">${actionBtn}</div>
             </div>
             `;
