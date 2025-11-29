@@ -684,8 +684,17 @@
             contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
         }
         if(job.receiver_phone && job.receiver_phone !== '-') {
-            // เปลี่ยนจาก <a href> เป็น <span onclick> เพื่อเรียก Modal
-            contactInfo += `<div style="margin-top:5px;">📞 เบอร์: <span onclick="promptCall('${job.receiver_phone}')" style="text-decoration:underline; color:var(--primary); cursor:pointer; font-weight:bold;">${job.receiver_phone}</span></div>`;
+            // [แก้ใหม่] แสดงเบอร์ในกล่อง id="phone-wrapper" เพื่อรองรับการเปลี่ยนปุ่ม
+            // ส่งเบอร์เดิม (มีขีด) และเบอร์คลีน (ไม่มีขีด) ไปรอไว้
+            const cleanPhone = job.receiver_phone.replace(/[^0-9+]/g, '');
+            contactInfo += `
+                <div id="phone-wrapper" style="margin-top:10px;">
+                    <div style="font-size:14px; margin-bottom:5px;">📞 เบอร์โทรศัพท์:</div>
+                    <button class="btn btn-outline" onclick="showInlineCall('${cleanPhone}', '${job.receiver_phone}')" style="width:100%; border:1px solid #ccc; color:#333; display:flex; justify-content:space-between; align-items:center; padding:10px;">
+                        <span>${job.receiver_phone}</span>
+                        <i class="fa-solid fa-phone" style="color:var(--primary);"></i>
+                    </button>
+                </div>`;
         }
         if(job.note && job.note !== '-') {
         contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
@@ -2036,6 +2045,40 @@
         document.getElementById('modal-title').innerText = "📞 ยืนยันเบอร์โทร";
         document.getElementById('modal-content').innerHTML = content;
         document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
+    // [ไม้ตาย] ฟังก์ชันเปลี่ยนปุ่มเป็นลิงก์โทรออก (Inline)
+    function showInlineCall(cleanPhone, originalPhone) {
+        const el = document.getElementById('phone-wrapper');
+        if(!el) return;
+
+        // เปลี่ยนเนื้อหาใน div เป็นปุ่มลิงก์ <a> ของจริง (Browser บล็อกไม่ได้แน่นอน)
+        el.innerHTML = `
+            <div style="font-size:14px; margin-bottom:5px; color:var(--primary); font-weight:bold;">ยืนยันการโทร?</div>
+            <div style="display:flex; gap:10px;">
+                <a href="tel:${cleanPhone}" class="btn btn-primary" style="flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px;">
+                    <i class="fa-solid fa-phone-volume"></i> โทรเลย
+                </a>
+                
+                <button class="btn btn-danger" onclick="resetPhoneDisplay('${cleanPhone}', '${originalPhone}')" style="width:80px;">
+                    ยกเลิก
+                </button>
+            </div>
+        `;
+    }
+
+    // ฟังก์ชันคืนค่าปุ่มเดิม (กรณีกดยกเลิก)
+    function resetPhoneDisplay(cleanPhone, originalPhone) {
+        const el = document.getElementById('phone-wrapper');
+        if(!el) return;
+        
+        el.innerHTML = `
+            <div style="font-size:14px; margin-bottom:5px;">📞 เบอร์โทรศัพท์:</div>
+            <button class="btn btn-outline" onclick="showInlineCall('${cleanPhone}', '${originalPhone}')" style="width:100%; border:1px solid #ccc; color:#333; display:flex; justify-content:space-between; align-items:center; padding:10px;">
+                <span>${originalPhone}</span>
+                <i class="fa-solid fa-phone" style="color:var(--primary);"></i>
+            </button>
+        `;
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
