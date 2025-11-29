@@ -1119,7 +1119,23 @@
     }
 
     // --- UTILS & MAP ---
-    function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
+    function closeModal() { 
+        document.getElementById('confirm-modal').style.display = 'none'; 
+        
+        // คืนค่าปุ่มใน Modal ให้กลับมาเหมือนเดิม (สำหรับหน้าอื่นใช้ต่อ)
+        const actionBtns = document.querySelectorAll('.modal-actions button');
+        if(actionBtns.length >= 2) {
+            actionBtns[1].style.display = 'inline-block'; // โชว์ปุ่มยืนยันกลับมา
+            actionBtns[0].innerText = "แก้ไข";            // คืนชื่อปุ่มแก้ไข
+            actionBtns[1].innerText = "ยืนยัน";           // คืนชื่อปุ่มยืนยัน
+        }
+        
+        // คืนค่าปุ่ม Copy (ถ้ามี Logic ซ่อนอยู่)
+        setTimeout(() => {
+            const btnCopy = document.querySelector('.btn-copy');
+            if(btnCopy) btnCopy.style.display = 'block';
+        }, 300);
+    }
     function confirmAction() {
         // 1. สร้างงานใหม่
         if (modalActionType === 'create') {
@@ -1988,23 +2004,34 @@
         }, 2000);
     }
 
-    // [เพิ่มใหม่] ฟังก์ชันเด้งถามก่อนโทร
+    // [แก้ไข] ฟังก์ชันเรียก Modal โทรศัพท์ (แบบปุ่ม Link จริง 100%)
     function promptCall(phone) {
-        pendingPhone = phone; // จำเบอร์ไว้
-        modalActionType = 'call_phone'; // ตั้ง Type งาน
+        // 1. ล้างเบอร์ให้สะอาด (เอาขีด/วรรคออก)
+        const cleanNumber = phone.replace(/[^0-9+]/g, '');
+        
+        // 2. ซ่อนปุ่มยืนยันอันเก่า (เพราะเราจะใช้ปุ่มใหม่ในเนื้อหาแทน)
+        // ปุ่มยืนยันคือตัวที่ 2 ใน modal-actions (index 1)
+        const actionBtns = document.querySelectorAll('.modal-actions button');
+        if(actionBtns.length >= 2) {
+            actionBtns[1].style.display = 'none'; // ซ่อนปุ่ม "ยืนยัน"
+            actionBtns[0].innerText = "ปิด";      // เปลี่ยนปุ่ม "แก้ไข/ยกเลิก" เป็น "ปิด"
+        }
+        document.querySelector('.btn-copy').style.display = 'none'; // ซ่อนปุ่ม Copy
 
+        // 3. สร้างเนื้อหา Modal พร้อมปุ่ม Link จริงๆ (<a href="tel:...">)
         const content = `
             <div style="text-align:center; padding:20px;">
-                <i class="fa-solid fa-phone-volume" style="font-size:40px; color:var(--primary); margin-bottom:15px;"></i>
-                <p style="font-size:16px;">ต้องการโทรหาปลายทาง?</p>
-                <div style="font-size:24px; font-weight:bold; color:#333; margin:10px 0;">${phone}</div>
+                <div style="font-size:24px; font-weight:bold; color:#333; margin-bottom:20px;">${phone}</div>
+                
+                <a href="tel:${cleanNumber}" class="btn btn-primary" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:10px; font-size:18px; padding:15px;">
+                    <i class="fa-solid fa-phone-volume"></i> โทรออกทันที
+                </a>
             </div>
         `;
 
-        document.getElementById('modal-title').innerText = "📞 ยืนยันการโทร";
+        document.getElementById('modal-title').innerText = "📞 ยืนยันเบอร์โทร";
         document.getElementById('modal-content').innerHTML = content;
-        document.querySelector('.btn-copy').style.display = 'none'; // ซ่อนปุ่ม Copy
-        document.getElementById('confirm-modal').style.display = 'flex'; // แสดง Modal
+        document.getElementById('confirm-modal').style.display = 'flex';
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
