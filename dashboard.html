@@ -1573,15 +1573,13 @@
     //     try { renderReport(); } catch(e){} // <--- เพิ่มบรรทัดนี้
     // }
 
-    // [เพิ่ม] ฟังก์ชัน Render หน้า Wallet
+    // [แก้ไข] รองรับการแสดงผล REFUND และ REJECTED
     function renderWallet() {
         const w = data.wallet;
         if(!w) return;
 
-        // 1. แสดงยอดเงิน
         document.getElementById('wallet-balance').innerText = w.balance.toLocaleString(undefined, {minimumFractionDigits: 2});
 
-        // 2. แสดงรายการ
         const el = document.getElementById('wallet-history-list');
         if(w.history.length === 0) {
             el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการ</div>';
@@ -1589,18 +1587,27 @@
         }
 
         el.innerHTML = w.history.map(t => {
-            const isIncome = t.type === 'INCOME';
-            const color = isIncome ? '#00B900' : '#dc3545';
-            const sign = isIncome ? '+' : '';
-            const icon = isIncome ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+            // เช็คว่าเป็นรายรับ หรือ คืนเงิน (REFUND) ให้เป็นสีเขียว
+            const isIncome = t.type === 'INCOME' || t.type === 'REFUND';
+        
+            let color = isIncome ? '#00B900' : '#dc3545';
+            let sign = isIncome ? '+' : '';
+            let icon = isIncome ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+        
+            // ถ้าเป็น Refund ให้เปลี่ยนไอคอนเป็นลูกศรหมุนกลับ
+            if (t.type === 'REFUND') icon = 'fa-rotate-left';
+
+            // ถ้าสถานะเป็น REJECTED (รายการถอนที่ล้มเหลว) ให้ทำตัวจางๆ และขีดฆ่า
+            const itemStyle = t.status === 'REJECTED' ? 'opacity:0.6; text-decoration:line-through;' : '';
+            if (t.status === 'REJECTED') color = '#999'; // เปลี่ยนสีเป็นเทา
 
             return `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="card" style="display:flex; justify-content:space-between; align-items:center; ${itemStyle}">
                 <div style="display:flex; gap:10px; align-items:center;">
                     <i class="fa-solid ${icon}" style="font-size:24px; color:${color};"></i>
                     <div>
                         <div style="font-weight:bold;">${t.note || t.type}</div>
-                        <div style="font-size:10px; color:#888;">${t.date}</div>
+                        <div style="font-size:10px; color:#888;">${t.date} <span class="role-badge" style="font-size:9px;">${t.status}</span></div>
                     </div>
                 </div>
                 <div style="font-weight:bold; color:${color}; font-size:16px;">
