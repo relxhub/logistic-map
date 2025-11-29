@@ -168,7 +168,9 @@
     
     <div class="form-group" style="background:#e8f5e9; padding:10px; border-radius:8px;">
         <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ค้นหาลูกค้าเก่า</label>
+        
         <input type="text" id="customer-search-input" list="customer-list" placeholder="พิมพ์ชื่อเพื่อค้นหา..." onchange="onCustomerSelected(this)" style="background:white; width:100%; border:1px solid #ddd; padding:10px; border-radius:8px;">
+        
         <datalist id="customer-list"></datalist>
     </div>
     
@@ -188,7 +190,7 @@
             <input type="text" id="job-recv-name" placeholder="ชื่อผู้รับ" style="flex:1;" enterkeyhint="next" />
             <input type="tel" id="job-recv-phone" placeholder="เบอร์โทร" style="flex:1;" enterkeyhint="next" />
         </div>
-        <input type="text" id="job-note" placeholder="หมายเหตุ (เช่น ระวังแตก, ฝากป้อมยาม)" enterkeyhint="done" />
+        <input type="text" id="job-note" placeholder="หมายเหตุ" enterkeyhint="done" />
         
         <div style="text-align:right; margin-top:5px;">
             <span style="font-size:12px; color:#666; text-decoration:underline; cursor:pointer;" onclick="promptSaveCustomer()">
@@ -351,7 +353,7 @@
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             try { renderPickupList(data.pickup_points || []); } catch(e){}
             try { setupPickupSelector(); } catch(e){}
-            try { setupCustomerSearch(); } catch(e){ console.error(e); }
+            try { setupCustomerSearch(); } catch(e){}
             try { renderFullHistory(); } catch(e){}
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
@@ -887,7 +889,7 @@
     function confirmAction() {
         if (modalActionType === 'create') {
             sendAction('create_job', pendingPayload);
-        } else if (modalActionType === 'save_customer') { // ✅ เพิ่มอันนี้
+        } else if (modalActionType === 'save_customer') { // ✅ เพิ่ม
             const name = document.getElementById('save-customer-name').value;
             if(!name) return alert('กรุณาตั้งชื่อ');
             pendingPayload.save_name = name;
@@ -1162,6 +1164,23 @@
         if(!dl) return;
         // สร้าง Option ให้ Datalist
         dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
+    }
+
+    function onCustomerSelected(input) {
+        const val = input.value;
+        if(!val) return;
+        // หาข้อมูลลูกค้าจากชื่อที่เลือก
+        const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
+        if(customer) {
+            // เติมข้อมูลลงฟอร์มอัตโนมัติ
+            document.getElementById('job-recv-name').value = customer.receiver_name;
+            document.getElementById('job-recv-phone').value = customer.receiver_phone;
+            tempLat = customer.lat;
+            tempLng = customer.lng;
+            document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
+            showStaticMap('preview-job', tempLat, tempLng);
+            document.getElementById('job-bill-id').focus();
+        }
     }
 
     // 2. เมื่อเลือกลูกค้า -> เติมข้อมูลลงฟอร์ม
