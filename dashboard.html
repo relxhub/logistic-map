@@ -1830,13 +1830,24 @@
         }).join('');
     }
 
-    // [เพิ่ม] ฟังก์ชันกดถอนเงิน (เตรียมไว้ก่อน)
+    // [แก้ไขล่าสุด] ฟังก์ชันแจ้งถอนเงิน (เช็คบัญชีธนาคารก่อน)
     function requestWithdraw() {
+        // 1. เช็คยอดเงิน
         const balance = parseFloat(document.getElementById('wallet-balance').innerText.replace(/,/g, ''));
         if(balance <= 0) return alert('ยอดเงินไม่พอสำหรับการถอน');
-    
-        // เดี๋ยวเรามาทำ Backend ส่วนนี้กันในขั้นตอนต่อไป
-        if(confirm(`ต้องการแจ้งถอนเงินจำนวน ${balance.toLocaleString()} บาท?`)) {
+
+        // 2. [เพิ่ม] เช็คว่ามีบัญชีธนาคารหรือยัง?
+        const bank = data.bank_info;
+        if (!bank || !bank.acc_no) {
+            // ถ้าไม่มี ให้ถามว่าจะไปหน้าเพิ่มบัญชีไหม
+            if(confirm('⚠️ คุณยังไม่ได้เพิ่มบัญชีรับเงิน\nต้องการไปเพิ่มข้อมูลบัญชีตอนนี้เลยหรือไม่?')) {
+                nav('bank'); // พาไปหน้ากรอกบัญชี
+            }
+            return; // จบการทำงาน ไม่ให้ถอน
+        }
+
+        // 3. ยืนยันการถอน (ถ้ามีบัญชีแล้ว)
+        if(confirm(`ต้องการแจ้งถอนเงินจำนวน ${balance.toLocaleString()} บาท\nเข้าบัญชี: ${bank.name} - ${bank.acc_no}?`)) {
             sendAction('withdraw_request', { amount: balance });
         }
     }
