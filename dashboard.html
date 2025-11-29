@@ -683,14 +683,15 @@
         if(job.receiver_name && job.receiver_name !== '-') {
             contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
         }
+        // [แก้ไข] เปลี่ยนการแสดงผลเบอร์โทร ให้เรียกปุ่มขอเบอร์จากบอท
         if(job.receiver_phone && job.receiver_phone !== '-') {
-            // [แก้ใหม่] แสดงเบอร์ในกล่อง id="phone-wrapper" เพื่อรองรับการเปลี่ยนปุ่ม
-            // ส่งเบอร์เดิม (มีขีด) และเบอร์คลีน (ไม่มีขีด) ไปรอไว้
             const cleanPhone = job.receiver_phone.replace(/[^0-9+]/g, '');
+            
+            // ✅ เพิ่ม job.receiver_name เข้าไปเป็น parameter ตัวที่ 3
             contactInfo += `
                 <div id="phone-wrapper" style="margin-top:10px;">
                     <div style="font-size:14px; margin-bottom:5px;">📞 เบอร์โทรศัพท์:</div>
-                    <button class="btn btn-outline" onclick="showInlineCall('${cleanPhone}', '${job.receiver_phone}')" style="width:100%; border:1px solid #ccc; color:#333; display:flex; justify-content:space-between; align-items:center; padding:10px;">
+                    <button class="btn btn-outline" onclick="showInlineCall('${cleanPhone}', '${job.receiver_phone}', '${job.receiver_name}')" style="width:100%; border:1px solid #ccc; color:#333; display:flex; justify-content:space-between; align-items:center; padding:10px;">
                         <span>${job.receiver_phone}</span>
                         <i class="fa-solid fa-phone" style="color:var(--primary);"></i>
                     </button>
@@ -2047,25 +2048,37 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // [แก้ไขล่าสุด] ฟังก์ชันเปลี่ยนปุ่มเป็นลิงก์โทรออก (เพิ่ม target="_top")
-    function showInlineCall(cleanPhone, originalPhone) {
+    // [แก้ไขล่าสุด] ขอเบอร์โทรผ่านบอท (Work 100%)
+    function showInlineCall(cleanPhone, originalPhone, custName) {
         const el = document.getElementById('phone-wrapper');
         if(!el) return;
 
-        // เปลี่ยนเนื้อหาใน div
-        // 🔴 จุดสำคัญที่แก้: เพิ่ม target="_top" และ onclick เพื่อบังคับเปิด
+        // เปลี่ยนเนื้อหาเป็นปุ่ม "ส่งเบอร์เข้าแชท"
         el.innerHTML = `
-            <div style="font-size:14px; margin-bottom:5px; color:var(--primary); font-weight:bold;">ยืนยันการโทร?</div>
+            <div style="font-size:14px; margin-bottom:5px; color:var(--primary); font-weight:bold;">ต้องการติดต่อ?</div>
             <div style="display:flex; gap:10px;">
-                <a href="tel:${cleanPhone}" target="_top" class="btn btn-primary" style="flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px;">
-                    <i class="fa-solid fa-phone-volume"></i> โทรเลย
-                </a>
+                <button class="btn btn-primary" onclick="requestCallFromBot('${originalPhone}', '${custName || 'ลูกค้า'}')" style="flex:1;">
+                    <i class="fa-solid fa-paper-plane"></i> ส่งเบอร์เข้าแชท
+                </button>
                 
                 <button class="btn btn-danger" onclick="resetPhoneDisplay('${cleanPhone}', '${originalPhone}')" style="width:80px;">
                     ยกเลิก
                 </button>
             </div>
+            <div style="font-size:10px; color:#999; margin-top:5px; text-align:center;">
+                (ระบบจะส่ง Contact Card ให้คุณกดโทรในห้องแชท)
+            </div>
         `;
+    }
+
+    // [เพิ่ม] ฟังก์ชันยิงคำสั่งหาบอท
+    function requestCallFromBot(phone, name) {
+        sendAction('request_call', { phone: phone, name: name });
+        // แจ้งเตือนสวยๆ
+        showToast("✅ ส่งเบอร์ให้แล้ว! เช็คในแชทได้เลย");
+        
+        // (Optional) สั่งปิด App เพื่อให้เห็นแชทเลยก็ได้
+        // tg.close(); 
     }
 
     // ฟังก์ชันคืนค่าปุ่มเดิม (กรณีกดยกเลิก)
