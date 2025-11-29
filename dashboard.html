@@ -680,7 +680,6 @@
             if (isReady) {
                 mainBtn = `<button class="btn btn-primary btn-sm" style="width:70%;" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">🚀 ปล่อยงาน</button>`;
             } else {
-                // ✅ แก้ข้อ 4: ปรับไซส์ปุ่มรอให้เท่ากับปุ่มปล่อยงาน (70%)
                 mainBtn = `<button class="btn btn-outline btn-sm" disabled style="width:70%; color:#999; border-color:#ddd;">⏳ รอคลังเตรียม</button>`;
             }
 
@@ -701,35 +700,32 @@
             `;
         }).join('');
 
-        // 2. Logic ปุ่ม Batch (ด้านล่าง)
+        // 2. Logic ปุ่มด้านล่าง (Dynamic Switching)
         const count = selectedPoolJobs.size;
-        let batchHtml = '';
-        
-        // ถ้ามีการเลือกงาน -> แสดงปุ่ม "ปล่อยงานที่เลือก"
+        let bottomBtnHtml = '';
+
         if (count > 0) {
-            batchHtml = `
+            // กรณีเลือกงานแบบ Batch -> ปุ่มสีเขียว (Primary)
+            bottomBtnHtml = `
             <div style="padding: 10px 0; position:sticky; bottom:0; background:var(--bg); z-index:100; border-top:1px solid #ddd;">
                 <button class="btn btn-primary" onclick="confirmPoolDispatchSelected()">
                     🚀 ปล่อยงานที่เลือก (${count} รายการ)
                 </button>
             </div>`;
         } else {
-            // ถ้าไม่เลือก -> แสดงปุ่ม "ปล่อยทั้งหมดที่พร้อม" (Auto Select Ready)
+            // กรณีไม่ได้เลือก -> ปุ่มสีเหลือง (Finish/Warning) ปล่อยทั้งหมดที่พร้อม
             const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
-            
-            // ✅ แก้ไข: แสดงเฉพาะเมื่อมีงานพร้อมเท่านั้น (ซ่อนถ้าไม่มีงานพร้อม)
             if(readyCount > 0) {
-                batchHtml = `
+                bottomBtnHtml = `
                 <div style="padding: 10px 0;">
-                    <button class="btn btn-primary" onclick="if(confirm('ยืนยันปล่อยทุกงานที่พร้อม (${readyCount})?')) sendAction('release_all')">
+                    <button class="btn btn-finish" onclick="if(confirm('ยืนยันปล่อยทุกงานที่พร้อม (${readyCount})?')) sendAction('release_all')">
                         🚀 ปล่อยงานทั้งหมดที่พร้อม (${readyCount})
                     </button>
                 </div>`;
             }
         }
 
-        // ✅ เอาปุ่ม "ปล่อยงานทั้งหมด" แบบเก่า (ที่อยู่นอกสุด) ออกไปเลย ไม่ต้องใส่กลับมา
-        el.innerHTML = html + batchHtml;
+        el.innerHTML = html + bottomBtnHtml;
     }
 
     // ฟังก์ชัน Toggle เลือกงาน
