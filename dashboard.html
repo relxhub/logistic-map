@@ -1121,36 +1121,58 @@
     // --- UTILS & MAP ---
     function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
     function confirmAction() {
+        // 1. สร้างงานใหม่
         if (modalActionType === 'create') {
             sendAction('create_job', pendingPayload);
-        } else if (modalActionType === 'save_customer') { // ✅ เพิ่ม
+        
+        // 2. บันทึกลูกค้า
+        } else if (modalActionType === 'save_customer') {
             const name = document.getElementById('save-customer-name').value;
             if(!name) return alert('กรุณาตั้งชื่อ');
             pendingPayload.save_name = name;
             sendAction('save_customer', pendingPayload);
             tg.close();
+
+        // 3. แก้ไขปลายทาง
         } else if (modalActionType === 'edit_dest') {
             sendAction('edit_destination', pendingPayload);
+
+        // 4. จบงาน (Rider)
         } else if (modalActionType === 'finish_job') {
             sendAction('req_finish', { job_id: currentJobId });
             tg.close();
+
+        // 5. คลัง: ยืนยันทั้งหมด
         } else if (modalActionType === 'warehouse_ready_all') {
             sendAction('warehouse_ready_all');
+
+        // 6. คลัง: ยืนยันที่เลือก
         } else if (modalActionType === 'warehouse_ready_selected') {
             sendAction('warehouse_ready_selected', pendingPayload);
-        
-        // ✅ เพิ่มเงื่อนไขนี้ครับ
+
+        // 7. คลัง: ยกเลิกงาน
         } else if (modalActionType === 'warehouse_cancel') {
             sendAction('warehouse_cancel', { job_id: currentJobId });
+
+        // 8. Pool: ปล่อยงานที่เลือก
         } else if (modalActionType === 'release_pool_selected') {
             sendAction('release_pool_selected', pendingPayload);
+
+        // 9. Pool: ยกเลิกงาน
         } else if (modalActionType === 'pool_cancel') {
             sendAction('pool_cancel', pendingPayload);
+
+        // 10. ✅ โทรออก (ส่วนที่เพิ่มใหม่)
         } else if (modalActionType === 'call_phone') {
-            window.location.href = `tel:${pendingPhone}`;
+            if(pendingPhone) {
+                window.location.href = `tel:${pendingPhone}`;
+            } else {
+                alert("ไม่พบเบอร์โทรศัพท์");
+            }
         }
         
         closeModal();
+        // คืนค่าปุ่ม Copy ให้แสดงเหมือนเดิมหลังจากปิด Modal
         setTimeout(() => document.querySelector('.btn-copy').style.display = 'block', 300);
     }
     
