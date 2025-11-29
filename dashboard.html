@@ -700,7 +700,7 @@
             `;
         }).join('');
 
-        // 2. Logic ปุ่มด้านล่าง (Dynamic Switching)
+        // 2. Logic ปุ่ม Batch (Dynamic Switching)
         const count = selectedPoolJobs.size;
         let bottomBtnHtml = '';
 
@@ -714,6 +714,7 @@
             </div>`;
         } else {
             // กรณีไม่ได้เลือก -> ปุ่มสีเหลือง (Finish/Warning) ปล่อยทั้งหมดที่พร้อม
+            // (เช็คว่ามีงานพร้อมปล่อยอย่างน้อย 1 งานไหม ถ้าไม่มีก็ซ่อนปุ่มไปเลย)
             const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
             if(readyCount > 0) {
                 bottomBtnHtml = `
