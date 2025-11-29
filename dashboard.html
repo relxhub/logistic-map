@@ -40,6 +40,8 @@
     .btn-primary { background: var(--primary); }
     .btn-danger { background: var(--danger); }
     .btn-warning { background: var(--warning); color: #333; }
+    .btn-finish { background: #FFC107 !important; color: #000 !important; border: 1px solid #e0a800; } 
+    .btn-finish:active { background: #FFB300 !important; }
     .btn-outline { background: transparent; border: 1px solid #ddd; color: #333; width: auto; padding: 6px 12px; font-size: 12px; }
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 5px; color: #888; }
     .btn-icon:hover { color: var(--primary); }
@@ -388,7 +390,6 @@
     function renderRiderJob(job) {
         const el = document.getElementById('rider-job-card');
         if (countdownInterval) clearInterval(countdownInterval);
-
         if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px;">ว่าง</div>'; return; }
         
         let btns = '';
@@ -396,38 +397,30 @@
         let statusText = 'งานของคุณ';
         let extraHtml = '';
 
-        // --- ส่วน Contact Info (ชื่อ/เบอร์/Note) ---
+        // --- Contact Info ---
         let contactInfo = '';
         if(job.receiver_name && job.receiver_name !== '-') {
             contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
         }
         
-        // 🔴 จุดแก้ที่ 1: ปุ่มโทรออกที่ใช้งานได้จริง
+        // ✅ จุดแก้ไขที่ 1: เอาปุ่มโทรสีเหลืองออก เหลือแค่ลิงก์เบอร์
         if(job.receiver_phone && job.receiver_phone !== '-') {
-            contactInfo += `
-            <div style="margin-top:5px; display:flex; align-items:center; gap:10px;">
-                <span>📞 เบอร์: ${job.receiver_phone}</span>
-                <a href="tel:${job.receiver_phone}" class="btn btn-warning" style="width:auto; padding:4px 10px; font-size:12px; text-decoration:none;">
-                    <i class="fa-solid fa-phone"></i> โทร
-                </a>
-            </div>`;
+            contactInfo += `<div style="margin-top:5px;">📞 เบอร์: <a href="tel:${job.receiver_phone}" style="text-decoration:none; color:inherit;"><b>${job.receiver_phone}</b></a></div>`;
         }
         
         if(job.note && job.note !== '-') {
             contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
         }
 
-        // --- Logic ปุ่มกดและ Countdown ---
+        // --- Logic ปุ่มกด ---
         if (job.status === 'OFFERED') {
             statusColor = '#ffc107';
             statusText = '🔔 งานใหม่มาแล้ว!';
-            
-            // Logic Countdown (จะทำงานถูกต้องแล้ว เพราะ Server ส่งเวลามาตรฐานมา)
+            // ... (Logic Countdown เดิม) ...
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
             const serverTimeMs = new Date(data.server_time).getTime();
             const clientTimeMs = new Date().getTime();
-            const timeDiff = clientTimeMs - serverTimeMs; // หาความต่างเวลาเครื่องกับ Server
-
+            const timeDiff = clientTimeMs - serverTimeMs;
             const updatedTime = new Date(job.updated_at).getTime();
             const expireTime = updatedTime + (timeoutSec * 1000);
 
@@ -438,9 +431,8 @@
                     <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
                 </div>
             `;
-            
             countdownInterval = setInterval(() => {
-                const nowAdjusted = new Date().getTime() - timeDiff; // เวลาปัจจุบันที่จูนตรงกับ Server แล้ว
+                const nowAdjusted = new Date().getTime() - timeDiff;
                 const diff = expireTime - nowAdjusted;
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
@@ -453,37 +445,29 @@
             }, 1000);
 
         } else if(job.status === 'ASSIGNED') {
-            
-            // สร้างลิงก์ Google Map แบบนำทาง (Destination)
-            // ใช้ api=1&destination=lat,lng เพื่อให้เปิดแอป Map แล้วกดนำทางได้เลย
-            const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
-
-            btns = `
-            <div style="display:flex; flex-direction:column; gap:10px;">
+             const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
+             btns = `
+             <div style="display:flex; flex-direction:column; gap:10px;">
                 <a href="${mapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-location-arrow"></i> นำทางไปจุดรับ
                 </a>
-
                 <button class="btn btn-warning" onclick="if(confirm('ยืนยันว่าได้รับของเรียบร้อยแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
                     <i class="fa-solid fa-box-open"></i> รับของแล้ว
                 </button>
-
                 <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')">
                     <i class="fa-solid fa-ban"></i> ยกเลิกงาน
                 </button>
-            </div>
-            `;
-
+             </div>
+             `;
         } else if (job.status === 'PICKED_UP') {
-             // ... (โค้ดส่วน Picked Up คงเดิม หรือปรับ Map URL ให้เป็นจุดส่ง dropoff_lat/lng)
-             const dropoffMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
-             
-             btns = `
+            const dropoffMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
+            btns = `
              <div style="display:flex; flex-direction:column; gap:10px;">
                 <a href="${dropoffMapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-flag-checkered"></i> นำทางไปจุดส่ง
                 </a>
-                <button class="btn btn-success" onclick="sendAction('req_finish', {job_id:'${job.job_id}'}); tg.close();">
+                
+                <button class="btn btn-finish" onclick="showFinishConfirm('${job.job_id}')">
                     <i class="fa-solid fa-camera"></i> ถ่ายรูปส่งงาน
                 </button>
              </div>
@@ -502,6 +486,24 @@
                 <div style="margin-top:10px;">${btns}</div>
             </div>
         `;
+    }
+
+    function showFinishConfirm(jobId) {
+        currentJobId = jobId;
+        modalActionType = 'finish_job';
+        
+        const content = `
+            <div style="text-align:center; padding:10px;">
+                <i class="fa-solid fa-circle-check" style="font-size:40px; color:#FFC107; margin-bottom:10px;"></i>
+                <p>ต้องการยืนยันการส่งงานใช่หรือไม่?</p>
+                <p style="font-size:12px; color:#666;">(ระบบจะปิดหน้านี้ เพื่อให้คุณถ่ายรูปในแชท)</p>
+            </div>
+        `;
+        
+        document.getElementById('modal-title').innerText = "📸 ยืนยันส่งงาน";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none'; // ซ่อนปุ่ม Copy
+        document.getElementById('confirm-modal').style.display = 'flex';
     }
 
     // --- OTHER FUNCTIONS ---
@@ -690,9 +692,19 @@
     // --- UTILS & MAP ---
     function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
     function confirmAction() {
-        if (modalActionType === 'create') sendAction('create_job', pendingPayload);
-        else if (modalActionType === 'edit_dest') sendAction('edit_destination', pendingPayload);
+        if (modalActionType === 'create') {
+            sendAction('create_job', pendingPayload);
+        } else if (modalActionType === 'edit_dest') {
+            sendAction('edit_destination', pendingPayload);
+        
+        // ✅ จุดแก้ไขที่ 4: ต้องมีเงื่อนไขนี้
+        } else if (modalActionType === 'finish_job') {
+            sendAction('req_finish', { job_id: currentJobId });
+            tg.close(); // สั่งปิด Mini App
+        }
+        
         closeModal();
+        setTimeout(() => document.querySelector('.btn-copy').style.display = 'block', 300);
     }
     
     function copyShippingPrice() {
