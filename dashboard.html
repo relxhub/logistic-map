@@ -358,7 +358,6 @@
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
             try { renderCustomerList(); } catch(e){}
-            try { setupCustomerSearch(); } catch(e){ console.error(e); }
         }
 
         if (role === 'RIDER') {
