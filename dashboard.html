@@ -566,67 +566,82 @@
         }).join('');
     }
 
+    // [แก้ไข] ฟังก์ชันแสดงงานของ Rider (ฉบับแก้ไข Syntax)
     function renderRiderJob(job) {
         const el = document.getElementById('rider-job-card');
-        if (countdownInterval) clearInterval(countdownInterval);
-        if (!job) { el.innerHTML = '<div style="text-align:center; padding:40px;">ว่าง</div>'; return; }
-        
+    
+        // เคลียร์ Countdown เก่า (ถ้ามี)
+        if (window.countdownInterval) clearInterval(window.countdownInterval);
+    
+        // ถ้าไม่มีงาน ให้แสดงคำว่าว่าง
+        if (!job) { 
+            el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">ยังไม่มีงานเข้าครับ</div>'; 
+            return; 
+        }
+
         let btns = '';
         let statusColor = '#00B900';
         let statusText = 'งานของคุณ';
         let extraHtml = '';
 
-        // --- Contact Info ---
+        // --- ส่วน Contact Info ---
         let contactInfo = '';
         if(job.receiver_name && job.receiver_name !== '-') {
             contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
         }
-        
-        // ✅ จุดแก้ไขที่ 1: เอาปุ่มโทรสีเหลืองออก เหลือแค่ลิงก์เบอร์
         if(job.receiver_phone && job.receiver_phone !== '-') {
             contactInfo += `<div style="margin-top:5px;">📞 เบอร์: <a href="tel:${job.receiver_phone}" style="text-decoration:none; color:inherit;"><b>${job.receiver_phone}</b></a></div>`;
         }
-        
         if(job.note && job.note !== '-') {
-            contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
+        contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
         }
 
-        // --- Logic ปุ่มกด ---
+        // --- Logic ปุ่มกดตามสถานะ ---
         if (job.status === 'OFFERED') {
             statusColor = '#ffc107';
             statusText = '🔔 งานใหม่มาแล้ว!';
-            // ... (Logic Countdown เดิม) ...
+        
+            // คำนวณ Countdown
             const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
-            const serverTimeMs = new Date(data.server_time).getTime();
-            const clientTimeMs = new Date().getTime();
-            const timeDiff = clientTimeMs - serverTimeMs;
+            // ป้องกัน Error กรณี server_time ไม่มี
+            const serverTime = data.server_time ? new Date(data.server_time).getTime() : new Date().getTime();
+            const clientTime = new Date().getTime();
+            const timeDiff = clientTime - serverTime;
             const updatedTime = new Date(job.updated_at).getTime();
             const expireTime = updatedTime + (timeoutSec * 1000);
 
             extraHtml = `<div id="job-countdown" style="text-align:center; font-size:24px; font-weight:bold; color:#d9534f; margin:10px 0;">...</div>`;
+        
             btns = `
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-primary" onclick="sendAction('accept_offer', {job_id:'${job.job_id}'})">✅ รับงานนี้</button>
-                    <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
-                </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="sendAction('accept_offer', {job_id:'${job.job_id}'})">✅ รับงานนี้</button>
+                <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
+            </div>
             `;
-            countdownInterval = setInterval(() => {
+
+            // เริ่มนับถอยหลัง
+            window.countdownInterval = setInterval(() => {
                 const nowAdjusted = new Date().getTime() - timeDiff;
                 const diff = expireTime - nowAdjusted;
                 if (diff <= 0) {
-                    clearInterval(countdownInterval);
-                    document.getElementById('job-countdown').innerText = "หมดเวลา!";
+                    clearInterval(window.countdownInterval);
+                    const cdEl = document.getElementById('job-countdown');
+                    if(cdEl) cdEl.innerText = "หมดเวลา!";
+                    // Refresh หน้าจออัตโนมัติเมื่อหมดเวลา
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
                     const s = Math.floor(diff / 1000);
-                    document.getElementById('job-countdown').innerText = `⏳ ${s} วิ`;
+                    const cdEl = document.getElementById('job-countdown');
+                    if(cdEl) cdEl.innerText = `⏳ ${s} วิ`;
                 }
             }, 1000);
 
         } else if(job.status === 'ASSIGNED') {
-             const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
-             btns = `
-             <div style="display:flex; flex-direction:column; gap:10px;">
+            // ✅ ใส่ Backtick (`) ครอบ URL ให้ถูกต้อง
+            const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
+        
+            btns = `
+            <div style="display:flex; flex-direction:column; gap:10px;">
                 <a href="${mapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-location-arrow"></i> นำทางไปจุดรับ
                 </a>
@@ -636,34 +651,39 @@
                 <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')">
                     <i class="fa-solid fa-ban"></i> ยกเลิกงาน
                 </button>
-             </div>
-             `;
+            </div>
+            `;
+
         } else if (job.status === 'PICKED_UP') {
+            // ✅ ใส่ Backtick (`) ครอบ URL ให้ถูกต้อง
             const dropoffMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
+        
             btns = `
-             <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; flex-direction:column; gap:10px;">
                 <a href="${dropoffMapUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                     <i class="fa-solid fa-flag-checkered"></i> นำทางไปจุดส่ง
                 </a>
-                
                 <button class="btn btn-finish" onclick="showFinishConfirm('${job.job_id}')">
                     <i class="fa-solid fa-camera"></i> ถ่ายรูปส่งงาน
                 </button>
-             </div>
-             `;
+            </div>
+            `;
         }
 
+        // Render HTML สุดท้าย
         el.innerHTML = `
-            <div class="card" style="border-left:5px solid ${statusColor};">
-                <h2 style="color:${statusColor}">${statusText}</h2>
-                ${extraHtml}
-                <h3>${job.bill_id}</h3>
-                <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b></p>
-                <p>📍 รับ: ${job.pickup_name}</p>
-                <hr>
-                ${contactInfo}
-                <div style="margin-top:10px;">${btns}</div>
-            </div>
+        <div class="card" style="border-left:5px solid ${statusColor};">
+            <h2 style="color:${statusColor}; margin-top:0;">${statusText}</h2>
+            ${extraHtml}
+            <h3 style="margin-bottom:5px;">${job.bill_id}</h3>
+            <div style="color:#666; font-size:12px; margin-bottom:10px;">Order #${job.order_no || '-'}</div>
+        
+            <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b> ${job.extra_fee > 0 ? `<span style="color:red; font-size:12px;">(+เปลี่ยนที่ ${job.extra_fee})</span>` : ''}</p>
+            <p>📍 รับ: ${job.pickup_name}</p>
+            <hr style="border:0; border-top:1px dashed #ddd; margin:10px 0;">
+            ${contactInfo}
+            <div style="margin-top:15px;">${btns}</div>
+        </div>
         `;
     }
 
