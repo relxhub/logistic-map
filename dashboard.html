@@ -133,8 +133,15 @@
         <select id="job-pickup-select"></select>
     </div>
     
+    <div class="form-group" style="background:#e8f5e9; padding:10px; border-radius:8px;">
+        <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ลูกค้าเก่า (ค้นหา)</label>
+        <select id="customer-search-select" onchange="selectSavedCustomer(this.value)">
+            <option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>
+        </select>
+    </div>
+
     <div class="form-group">
-        <label class="form-label">2. ปลายทาง (ลูกค้า)</label>
+        <label class="form-label">3. ปลายทาง (ลูกค้า)</label>
         <div style="display:flex; gap:5px;">
             <input type="text" id="job-search-input" placeholder="🔍 ค้นหา/ปักหมุด..." onclick="openMap('job')" readonly />
             <button class="btn btn-primary" style="width:auto;" onclick="openMap('job')"><i class="fa-solid fa-map"></i></button>
@@ -143,17 +150,19 @@
     </div>
     
     <div class="form-group">
-        <label class="form-label">3. รายละเอียดลูกค้า</label>
-        
+        <label class="form-label">4. รายละเอียด</label>
         <input type="text" id="job-bill-id" placeholder="เลขบิล / Order ID" style="margin-bottom:5px;" enterkeyhint="next" />
-        
         <div style="display:flex; gap:5px; margin-bottom:5px;">
             <input type="text" id="job-recv-name" placeholder="ชื่อผู้รับ" style="flex:1;" enterkeyhint="next" />
-            
             <input type="tel" id="job-recv-phone" placeholder="เบอร์โทร" style="flex:1;" enterkeyhint="next" />
         </div>
-        
         <input type="text" id="job-note" placeholder="หมายเหตุ (เช่น ระวังแตก, ฝากป้อมยาม)" enterkeyhint="done" />
+        
+        <div style="text-align:right; margin-top:5px;">
+            <span style="font-size:12px; color:#666; text-decoration:underline; cursor:pointer;" onclick="promptSaveCustomer()">
+                <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลนี้ไว้ใช้ครั้งหน้า
+            </span>
+        </div>
     </div>
 
     <button class="btn btn-primary" id="btn-submit-job" onclick="submitJob()">🚀 สรุปและสร้างงาน</button>
@@ -310,6 +319,7 @@
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             try { renderPickupList(data.pickup_points || []); } catch(e){}
             try { setupPickupSelector(); } catch(e){}
+            try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFullHistory(); } catch(e){}
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
@@ -650,8 +660,9 @@
         if(list.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ว่างเปล่า</div>'; return; }
         el.innerHTML = list.map(p => `
             <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                <div><b>${p.name}</b><br><span style="font-size:10px; color:#999;">โดย: ${p.creator_name}</span></div>
+                <div><b>${p.name}</b><br><span style="font-size:10px; color:#999;">โดย: ${p.creator_name || 'System'}</span></div>
                 <div style="display:flex; gap:5px;">
+                    <button class="btn-icon" onclick="editPickup('${p.id}', '${p.name}', ${p.lat}, ${p.lng})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-icon delete" onclick="if(confirm('ลบจุดรับนี้?')) sendAction('delete_pickup', {id: '${p.id}'})"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>
@@ -858,6 +869,15 @@
             sendAction('release_pool_selected', pendingPayload);
         } else if (modalActionType === 'pool_cancel') {
             sendAction('pool_cancel', pendingPayload);
+        } else if (modalActionType === 'save_customer') {
+            const saveName = document.getElementById('save-customer-name').value;
+            if(!saveName) {
+                alert('กรุณาตั้งชื่อที่จะบันทึก');
+                return; // ไม่ปิด Modal
+            }
+            // เพิ่มชื่อเข้าไปใน payload
+            pendingPayload.save_name = saveName;
+            sendAction('save_customer', pendingPayload);
         }
         
         closeModal();
@@ -1098,6 +1118,74 @@
         document.getElementById('modal-content').innerHTML = content;
         document.querySelector('.btn-copy').style.display = 'none';
         document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
+    // 1. โหลดรายชื่อลง Dropdown (เรียกตอน renderMenu)
+    function setupCustomerSearch() {
+        const list = data.saved_customers || [];
+        const sel = document.getElementById('customer-search-select');
+        if(!sel) return;
+        
+        sel.innerHTML = '<option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>' + 
+                        list.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    // 2. เมื่อเลือกลูกค้า -> เติมข้อมูลลงฟอร์ม
+    function selectSavedCustomer(custId) {
+        if(!custId) return;
+        const customer = data.saved_customers.find(c => c.id === custId);
+        if(!customer) return;
+
+        // เติมข้อมูล
+        document.getElementById('job-recv-name').value = customer.receiver_name;
+        document.getElementById('job-recv-phone').value = customer.receiver_phone;
+        
+        // เติมพิกัด
+        tempLat = customer.lat;
+        tempLng = customer.lng;
+        document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
+        showStaticMap('preview-job', tempLat, tempLng);
+        
+        // Focus ไปที่ช่องเลขบิล (เพราะยังไงก็ต้องกรอกใหม่)
+        document.getElementById('job-bill-id').focus();
+    }
+
+    // 3. กดบันทึก -> แสดง Modal
+    function promptSaveCustomer() {
+        const rName = document.getElementById('job-recv-name').value;
+        const rPhone = document.getElementById('job-recv-phone').value;
+        
+        if(!tempLat || !rName) {
+            alert('กรุณาปักหมุดและกรอกชื่อผู้รับก่อนบันทึก');
+            return;
+        }
+
+        modalActionType = 'save_customer';
+        // เตรียมข้อมูลรอส่ง
+        pendingPayload = { 
+            receiver_name: rName, 
+            receiver_phone: rPhone, 
+            lat: tempLat, 
+            lng: tempLng 
+        };
+
+        const content = `
+            <div class="form-group">
+                <label class="form-label">ตั้งชื่อที่บันทึก (เช่น รหัสลูกค้า)</label>
+                <input type="text" id="save-customer-name" placeholder="ตัวอย่าง: รหัสลูกค้า A01" style="width:100%; border:1px solid #ccc;">
+            </div>
+            <div style="font-size:12px; color:#666; margin-top:5px;">
+                ผู้รับ: ${rName}<br>เบอร์: ${rPhone}
+            </div>
+        `;
+        
+        document.getElementById('modal-title').innerText = "💾 บันทึกข้อมูลลูกค้า";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
+        
+        // Focus ช่องกรอกชื่อ
+        setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
