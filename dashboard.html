@@ -169,10 +169,9 @@
     <div class="form-group" style="background:#e8f5e9; padding:10px; border-radius:8px;">
         <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-user-clock"></i> ค้นหาลูกค้าเก่า</label>
         
-        <input type="text" id="customer-search-input" list="customer-list" placeholder="พิมพ์ชื่อเพื่อค้นหา..." onchange="onCustomerSelected(this)" style="background:white;">
+        <input type="text" id="customer-search-input" list="customer-list" placeholder="พิมพ์ชื่อเพื่อค้นหา..." onchange="onCustomerSelected(this)" style="background:white; width:100%; border:1px solid #ddd; padding:10px; border-radius:8px;">
         
-        <datalist id="customer-list">
-            </datalist>
+        <datalist id="customer-list"></datalist>
     </div>
 
     <div class="form-group">
@@ -1165,10 +1164,12 @@
     function setupCustomerSearch() {
         const list = data.saved_customers || [];
         const dl = document.getElementById('customer-list');
+        
+        // ถ้าหา element ไม่เจอ ให้จบการทำงาน (กัน Error)
         if(!dl) return;
         
-        // สร้าง option สำหรับ datalist (value คือชื่อที่โชว์, data-id เก็บ ID ไว้)
-        // หมายเหตุ: datalist มาตรฐานเก็บ custom attribute ยาก เราจะใช้เทคนิค map ชื่อกับ id ทีหลัง
+        // สร้าง option สำหรับ datalist
+        // Format: "ชื่อที่บันทึก (ชื่อผู้รับ)"
         dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
     }
 
