@@ -936,24 +936,38 @@
         renderPoolList(data.pool_jobs);
     }
 
-    // --- CREATE JOB & MODAL ---
+    // [แก้ไข] ฟังก์ชันสร้างงาน (แบบป้องกัน NaN และแจ้งเตือนจุดผิด)
     function submitJob() {
         const bill = document.getElementById('job-bill-id').value;
         const pid = document.getElementById('job-pickup-select').value;
-        
+
         // New Fields
         const rName = document.getElementById('job-recv-name').value;
         const rPhone = document.getElementById('job-recv-phone').value;
         const note = document.getElementById('job-note').value;
 
+        // 1. เช็คว่ากรอกครบไหม
         if(!bill || !tempLat || !pid) return alert('กรุณากรอกข้อมูลให้ครบ (บิล, จุดรับ, ปลายทาง)');
-        
+
+        // 2. ค้นหาจุดรับ (Pickup Point)
         const pickup = (data.pickup_points || []).find(p => p.id === pid);
-        const dist = calcDist(pickup.lat, pickup.lng, tempLat, tempLng);
-        const price = Math.ceil(config.base + (dist * config.km));
+        if (!pickup) return alert('❌ ไม่พบข้อมูลจุดรับพัสดุ (ลองรีเฟรชหน้าจอ)');
+
+        // 3. ตรวจสอบค่า Config (กันเหนียวไว้ ถ้าไม่มีให้ใช้ค่า Default)
+        const basePrice = (config && config.base) ? parseFloat(config.base) : 40;
+        const pricePerKm = (config && config.km) ? parseFloat(config.km) : 10;
+
+        // 4. คำนวณระยะทาง
+        const dist = calcDist(parseFloat(pickup.lat), parseFloat(pickup.lng), parseFloat(tempLat), parseFloat(tempLng));
         
+        // เช็คว่าระยะทางคำนวณได้จริงไหม
+        if (isNaN(dist)) return alert('❌ คำนวณระยะทางผิดพลาด (พิกัดไม่ถูกต้อง)');
+
+        // 5. คำนวณราคา
+        const price = Math.ceil(basePrice + (dist * pricePerKm));
+
+        // 6. เตรียมเปิด Modal
         modalActionType = 'create';
-        // ✅ แนบข้อมูลใหม่ไปใน payload
         pendingPayload = { 
             bill_id: bill, 
             pickup_id: pid, 
@@ -976,6 +990,7 @@
         <hr style="margin: 5px 0; border:0; border-top:1px dashed #ddd;">
         <div class="modal-line" style="font-size:16px; color:var(--primary);"><span>💰 ค่าส่ง:</span> <b>${price} บาท</b></div>
         `;
+        
         document.getElementById('modal-title').innerText = "📦 ยืนยันสร้างงาน";
         document.getElementById('modal-content').innerHTML = content;
         document.getElementById('confirm-modal').style.display = 'flex';
