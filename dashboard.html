@@ -72,6 +72,21 @@
     .nav-btn i { font-size: 22px; display: block; margin-bottom: 4px; }
     
     .fab { position: fixed; bottom: 90px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 800; }
+
+    .card.selected {
+    border: 2px solid var(--primary) !important;
+    background-color: #e8f5e9;
+    transform: scale(0.98);
+    }
+    .select-check {
+    display: none;
+    font-size: 20px;
+    color: var(--primary);
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    }
+    .card.selected .select-check { display: block; }
     
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
@@ -200,6 +215,9 @@
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
+
+    // ✅ วางตรงนี้ครับ (บรรทัดแรกๆ ของ script)
+    let selectedJobs = new Set();
     
     // STATE
     let data = { role: 'GUEST' };
@@ -748,6 +766,8 @@
             tg.close();
         } else if (modalActionType === 'warehouse_ready_all') {
             sendAction('warehouse_ready_all');
+        } else if (modalActionType === 'warehouse_ready_selected') {
+            sendAction('warehouse_ready_selected', pendingPayload);
         
         // ✅ เพิ่มเงื่อนไขนี้ครับ
         } else if (modalActionType === 'warehouse_cancel') {
@@ -874,15 +894,21 @@
 
     function renderWarehouseList(list) {
         const el = document.getElementById('warehouse-list');
-        if(!list || list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานค้าง (เตรียมครบแล้ว)</div>'; return; }
+        if(!list || list.length === 0) { 
+            el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานค้าง (เตรียมครบแล้ว)</div>'; 
+            return; 
+        }
 
-        let html = list.map(j => `
-            <div class="card" style="border-left: 4px solid #ffc107;">
+        // 1. สร้างการ์ด
+        let html = list.map(j => {
+            const isSel = selectedJobs.has(j.job_id) ? 'selected' : '';
+            return `
+            <div class="card ${isSel}" style="border-left: 4px solid #ffc107; cursor:pointer; position:relative;" onclick="toggleSelectJob('${j.job_id}')">
+                <i class="fa-solid fa-circle-check select-check"></i>
                 <div class="card-header">📦 #${j.order_no} | ${j.bill_id}</div>
                 <div class="card-row">👤 ผู้รับ: ${j.receiver_name}</div>
                 <div class="card-row">📞 เบอร์: ${j.receiver_phone}</div>
-                <div class="card-actions">
-                    <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger); width:30%; margin-right:5px;" onclick="confirmWarehouseCancel('${j.job_id}', '${j.bill_id}')">
+                <div class="card-actions" onclick="event.stopPropagation()"> <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger); width:30%; margin-right:5px;" onclick="confirmWarehouseCancel('${j.job_id}', '${j.bill_id}')">
                         ❌ ยกเลิก
                     </button>
                     <button class="btn btn-primary btn-sm" style="width:70%;" onclick="sendAction('warehouse_ready_one', {job_id: '${j.job_id}', bill_id: '${j.bill_id}'})">
@@ -890,17 +916,61 @@
                     </button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
-        // ปุ่มพร้อมทั้งหมด (คงเดิม)
+        // 2. Logic ปุ่มด้านล่าง (Batch Button)
+        const count = selectedJobs.size;
+        let btnText = `🚀 พัสดุพร้อมทั้งหมด (${list.length})`;
+        let btnAction = `confirmWarehouseReadyAll(${list.length})`;
+        let btnColor = "btn-finish"; // สีเหลือง
+
+        if (count > 0) {
+            btnText = `✅ ยืนยันพร้อมส่ง (${count} รายการ)`;
+            btnAction = `confirmWarehouseReadySelected()`;
+            btnColor = "btn-primary"; // สีเขียว (เปลี่ยนสีให้ชัดเจนว่าเลือกอยู่)
+        }
+
         html += `
-        <div style="padding: 10px 0;">
-            <button class="btn btn-finish" onclick="confirmWarehouseReadyAll(${list.length})">
-                🚀 พัสดุพร้อมทั้งหมด (${list.length})
+        <div style="padding: 10px 0; position:sticky; bottom:0; background:var(--bg); z-index:100; border-top:1px solid #ddd;">
+            <button class="btn ${btnColor}" onclick="${btnAction}">
+                ${btnText}
             </button>
         </div>`;
 
         el.innerHTML = html;
+    }
+
+    // 1.4 ฟังก์ชัน Toggle (เลือก/ไม่เลือก)
+    function toggleSelectJob(jobId) {
+        if (selectedJobs.has(jobId)) {
+            selectedJobs.delete(jobId);
+        } else {
+            selectedJobs.add(jobId);
+        }
+        // Re-render เพื่ออัปเดตหน้าจอทันที (ใช้ข้อมูลเดิม data.warehouse_jobs)
+        renderWarehouseList(data.warehouse_jobs);
+    }
+
+    function confirmWarehouseReadySelected() {
+        if (selectedJobs.size === 0) return;
+        
+        modalActionType = 'warehouse_ready_selected';
+        // แปลง Set เป็น Array เพื่อส่งไป
+        pendingPayload = { job_ids: Array.from(selectedJobs) };
+        
+        const content = `
+            <div style="text-align:center; padding:10px;">
+                <i class="fa-solid fa-check-double" style="font-size:40px; color:var(--primary); margin-bottom:10px;"></i>
+                <p style="font-size:16px; font-weight:bold;">ยืนยัน ${selectedJobs.size} รายการ?</p>
+                <p style="font-size:12px; color:#666;">เฉพาะรายการที่เลือกจะถูกส่งไปให้หัวหน้าปล่อยงาน</p>
+            </div>
+        `;
+        
+        document.getElementById('modal-title').innerText = "📦 ยืนยันแบบเลือก";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none';
+        document.getElementById('confirm-modal').style.display = 'flex';
     }
 
     function confirmWarehouseCancel(jobId, billId) {
