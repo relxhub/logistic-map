@@ -400,7 +400,7 @@
     <div class="map-footer-bar"><div id="map-status-text">เลื่อนหมุด</div><button class="btn btn-primary" id="btn-confirm-loc" disabled>📍 ยืนยัน</button></div>
 </div>
 
-<div id="confirm-modal" class="modal-overlay">
+<div id="confirm-modal" class="modal-overlay" onclick="if(event.target === this) closeModal()">
     <div class="modal-box">
         <div class="modal-title" id="modal-title">📦 สรุป</div>
         <div class="modal-detail" id="modal-content"></div>
@@ -814,13 +814,16 @@
         document.getElementById('confirm-modal').style.display = 'flex';
     }
 
-    // [แก้ไข] ฟังก์ชันจบงานแบบแนบรูปในแอป
+    // [แก้ไข] เพิ่มปุ่มปิด (X) มุมขวาบน
     function showFinishConfirm(jobId) {
         currentJobId = jobId;
         
-        // สร้าง Modal ที่มีช่องอัปโหลดรูป
         const content = `
-            <div style="text-align:center; padding:10px;">
+            <div style="position:relative; text-align:center; padding:10px;">
+                <div onclick="closeModal()" style="position:absolute; top:-10px; right:-10px; width:30px; height:30px; background:#eee; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#666;">
+                    <i class="fa-solid fa-xmark"></i>
+                </div>
+
                 <i class="fa-solid fa-camera" style="font-size:40px; color:#FFC107; margin-bottom:10px;"></i>
                 <h3>📸 ยืนยันการส่งงาน</h3>
                 <p style="font-size:12px; color:#666; margin-bottom:15px;">ถ่ายรูปสินค้าที่วางไว้จุดส่งเพื่อเป็นหลักฐาน</p>
@@ -839,7 +842,6 @@
         document.getElementById('modal-title').innerText = "🏁 ปิดงาน";
         document.getElementById('modal-content').innerHTML = content;
         
-        // ซ่อนปุ่ม Action เดิมของ Modal เพราะเราสร้างปุ่มใหม่เองข้างในแล้ว
         document.querySelector('.modal-actions').style.display = 'none'; 
         document.getElementById('confirm-modal').style.display = 'flex';
     }
@@ -1141,19 +1143,22 @@
     }
 
     // --- UTILS & MAP ---
-    // [แก้ไข] ปิด Modal แล้วคืนค่าปุ่มต่างๆ ให้เหมือนเดิม
+    // [แก้ไขล่าสุด] ปิด Modal และคืนค่าทุกอย่างสู่สภาพเดิม
     function closeModal() { 
         document.getElementById('confirm-modal').style.display = 'none'; 
         
-        // คืนค่าปุ่มใน Modal ให้กลับมาเหมือนเดิม (สำหรับหน้าอื่นใช้ต่อ)
+        // 1. คืนค่าปุ่ม Action (เผื่อถูกซ่อนโดยหน้าจบงาน)
+        document.querySelector('.modal-actions').style.display = 'flex';
+
+        // 2. คืนค่าปุ่มใน Modal (เผื่อถูกซ่อนโดยหน้าโทรศัพท์)
         const actionBtns = document.querySelectorAll('.modal-actions button');
         if(actionBtns.length >= 2) {
-            actionBtns[1].style.display = 'inline-block'; // โชว์ปุ่มยืนยันกลับมา
+            actionBtns[1].style.display = 'inline-block'; // โชว์ปุ่มยืนยัน
             actionBtns[0].innerText = "แก้ไข";            // คืนชื่อปุ่มแก้ไข
             actionBtns[1].innerText = "ยืนยัน";           // คืนชื่อปุ่มยืนยัน
         }
         
-        // คืนค่าปุ่ม Copy (ถ้ามี Logic ซ่อนอยู่)
+        // 3. คืนค่าปุ่ม Copy
         setTimeout(() => {
             const btnCopy = document.querySelector('.btn-copy');
             if(btnCopy) btnCopy.style.display = 'block';
