@@ -353,7 +353,7 @@
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             try { renderPickupList(data.pickup_points || []); } catch(e){}
             try { setupPickupSelector(); } catch(e){}
-            try { setupCustomerSearch(); } catch(e){}
+            try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFullHistory(); } catch(e){}
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
@@ -1007,6 +1007,48 @@
         return R * c; 
     }
 
+    // 1. โหลดรายชื่อลง Datalist (เรียกตอน renderMenu)
+    function setupCustomerSearch() {
+        // ดึงข้อมูลลูกค้าที่ Backend ส่งมา
+        const list = data.saved_customers || [];
+        const dl = document.getElementById('customer-list');
+        
+        if(!dl) return; // ถ้าหาไม่เจอก็จบ
+        
+        // สร้าง option สำหรับ datalist
+        // value = สิ่งที่แสดงในช่องค้นหา (ชื่อร้าน)
+        // เราจะแอบใส่ (ชื่อผู้รับ) ไว้ข้างหลังเพื่อให้ค้นง่ายขึ้น
+        dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
+    }
+
+    // 2. เมื่อเลือกรายชื่อจาก Datalist (เรียกจาก onchange ของ input)
+    function onCustomerSelected(input) {
+        const val = input.value;
+        if(!val) return;
+
+        // ค้นหาข้อมูลลูกค้าจากชื่อที่เลือก (ต้องตรงเป๊ะๆ ตาม value ใน option)
+        const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
+        
+        if(customer) {
+            // เจอข้อมูลแล้ว! เอามาใส่ฟอร์มเลย
+            document.getElementById('job-recv-name').value = customer.receiver_name || '';
+            document.getElementById('job-recv-phone').value = customer.receiver_phone || '';
+            
+            // เติมพิกัดและโชว์แผนที่
+            tempLat = customer.lat;
+            tempLng = customer.lng;
+            document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
+            showStaticMap('preview-job', tempLat, tempLng);
+            
+            // ย้ายเคอร์เซอร์ไปช่อง "เลขบิล" เพื่อให้กรอกต่อได้เลย
+            document.getElementById('job-bill-id').focus();
+            
+            // (Optional) ล้างช่องค้นหาเพื่อให้ดูสะอาด
+            input.value = ''; 
+            input.placeholder = `เลือก: ${customer.name} แล้ว`;
+        }
+    }
+
     // --- AUTO FOCUS LOGIC ---
     function setupFormNavigation() {
         // รายชื่อ ID ของ Input เรียงตามลำดับ
@@ -1155,32 +1197,6 @@
         document.getElementById('modal-content').innerHTML = content;
         document.querySelector('.btn-copy').style.display = 'none';
         document.getElementById('confirm-modal').style.display = 'flex';
-    }
-
-    // 1. โหลดรายชื่อลง Datalist
-    function setupCustomerSearch() {
-        const list = data.saved_customers || [];
-        const dl = document.getElementById('customer-list');
-        if(!dl) return;
-        // สร้าง Option ให้ Datalist
-        dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
-    }
-
-    function onCustomerSelected(input) {
-        const val = input.value;
-        if(!val) return;
-        // หาข้อมูลลูกค้าจากชื่อที่เลือก
-        const customer = (data.saved_customers || []).find(c => `${c.name} (${c.receiver_name})` === val);
-        if(customer) {
-            // เติมข้อมูลลงฟอร์มอัตโนมัติ
-            document.getElementById('job-recv-name').value = customer.receiver_name;
-            document.getElementById('job-recv-phone').value = customer.receiver_phone;
-            tempLat = customer.lat;
-            tempLng = customer.lng;
-            document.getElementById('job-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
-            showStaticMap('preview-job', tempLat, tempLng);
-            document.getElementById('job-bill-id').focus();
-        }
     }
 
     // 2. เมื่อเลือกลูกค้า -> เติมข้อมูลลงฟอร์ม
