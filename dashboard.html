@@ -317,7 +317,7 @@
             menuHtml += `<div class="menu-item" onclick="nav('pickup')"><i class="fa-solid fa-map-pin"></i><br>ตั้งจุดรับ</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
-            menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
+            menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
             let nh = navHtml + `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
             if (role !== 'ADMIN') {
                 menuHtml += `<div class="menu-item" onclick="nav('pool')"><i class="fa-solid fa-layer-group"></i><br>Pool</div>`;
@@ -358,6 +358,7 @@
             try { renderFullHistory(); } catch(e){}
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
+            try { renderCustomerList(); } catch(e){}
         }
 
         if (role === 'RIDER') {
@@ -649,6 +650,8 @@
             document.getElementById('view-add-pickup').classList.add('active');
             editPickupId = null;
             resetPickupForm();
+        } else if (page === 'add-customer') { 
+            document.getElementById('view-add-customer').classList.add('active');
         } else {
             document.getElementById('view-'+page).classList.add('active');
         }
@@ -980,6 +983,9 @@
             showStaticMap('preview-job', tempLat, tempLng);
         } else if (mapMode === 'edit_dest') {
             confirmEditDestPreview();
+        } else if (mapMode === 'customer') { 
+            document.getElementById('cust-search-input').value = `${tempLat.toFixed(4)}, ${tempLng.toFixed(4)}`;
+            showStaticMap('preview-customer', tempLat, tempLng);
         }
     });
     
@@ -1238,6 +1244,95 @@
         
         // Focus ช่องกรอกชื่อ
         setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
+    }
+
+    // --- ✅✅✅ [วางชุดนี้ลงไปครับ] CUSTOMER LOGIC ✅✅✅ ---
+    let editCustomerId = null;
+
+    // 1. แสดงรายชื่อ (กรองตาม Role)
+    function renderCustomerList() {
+        const list = data.saved_customers || [];
+        const el = document.getElementById('customer-list');
+        const myId = data.id;
+        
+        // กรอง: Admin เห็นแค่ของตัวเอง, หัวหน้าเห็นหมด
+        const filtered = list.filter(c => {
+            if (['SUPERADMIN', 'SUPERVISOR'].includes(data.role)) return true; 
+            if (data.role === 'ADMIN') return c.created_by === myId; 
+            return false;
+        });
+
+        if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ไม่พบข้อมูล</div>'; return; }
+
+        el.innerHTML = filtered.map(c => `
+            <div class="card" style="position:relative;">
+                <div class="card-header"><i class="fa-solid fa-user-tag"></i> ${c.name}</div>
+                <div class="card-row">👤 ${c.receiver_name} | 📞 ${c.receiver_phone}</div>
+                <div class="card-actions">
+                    <button class="btn-icon" onclick="editCustomer('${c.id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn-icon delete" onclick="if(confirm('ลบข้อมูลนี้?')) sendAction('delete_customer', {id: '${c.id}'})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 2. ไปหน้าเพิ่มใหม่
+    function goToAddCustomer() {
+        editCustomerId = null;
+        document.getElementById('customer-form-title').innerText = "➕ เพิ่มลูกค้าใหม่";
+        
+        // ล้างค่าในฟอร์ม
+        document.getElementById('cust-save-name').value = '';
+        document.getElementById('cust-recv-name').value = '';
+        document.getElementById('cust-recv-phone').value = '';
+        document.getElementById('cust-search-input').value = '';
+        document.getElementById('preview-customer').innerHTML = '<div class="map-preview-placeholder">แผนที่</div>';
+        tempLat = null; tempLng = null;
+        
+        goToPage('add-customer');
+    }
+
+    // 3. ไปหน้าแก้ไข (ดึงข้อมูลเก่ามาใส่)
+    function editCustomer(id) {
+        const c = data.saved_customers.find(x => x.id === id);
+        if(!c) return;
+
+        editCustomerId = id;
+        document.getElementById('customer-form-title').innerText = "✏️ แก้ไขข้อมูลลูกค้า";
+        
+        document.getElementById('cust-save-name').value = c.name;
+        document.getElementById('cust-recv-name').value = c.receiver_name;
+        document.getElementById('cust-recv-phone').value = c.receiver_phone;
+        
+        tempLat = c.lat;
+        tempLng = c.lng;
+        document.getElementById('cust-search-input').value = `${c.lat}, ${c.lng}`;
+        showStaticMap('preview-customer', c.lat, c.lng);
+        
+        goToPage('add-customer');
+    }
+
+    // 4. กดปุ่มบันทึก
+    function saveCustomerForm() {
+        const name = document.getElementById('cust-save-name').value;
+        const rName = document.getElementById('cust-recv-name').value;
+        const rPhone = document.getElementById('cust-recv-phone').value;
+
+        if(!name || !tempLat) return alert('กรุณากรอกชื่อและปักหมุดแผนที่');
+
+        const payload = {
+            save_name: name,
+            receiver_name: rName,
+            receiver_phone: rPhone,
+            lat: tempLat,
+            lng: tempLng
+        };
+
+        if(editCustomerId) {
+            payload.id = editCustomerId; // ถ้ามี ID แปลว่าแก้ไข
+        }
+
+        sendAction('save_customer', payload);
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
