@@ -454,10 +454,14 @@
         if (role === 'RIDER') {
             menuHtml += `
                 <div class="menu-item" onclick="nav('rider')"><i class="fa-solid fa-motorcycle"></i><br>งานปัจจุบัน</div>
-                <div class="menu-item" onclick="nav('wallet')"><i class="fa-solid fa-wallet"></i><br>กระเป๋าเงิน</div> <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
+                <div class="menu-item" onclick="nav('wallet')"><i class="fa-solid fa-wallet"></i><br>กระเป๋าเงิน</div>
+                <div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติงาน</div>
             `;
-            // navHtml ก็เพิ่มปุ่มเหมือนกันถ้าต้องการ (หรือเอาไว้แค่เมนูหลักก็ได้ครับ)
-            try { renderWallet(); } catch(e){}
+        
+            // (ส่วนล่าง) ถ้าอยากให้มีในแถบล่างด้วย ให้เติมบรรทัดนี้
+            navHtml += `<div class="nav-btn" onclick="nav('rider', this)"><i class="fa-solid fa-motorcycle"></i>งาน</div>`;
+            navHtml += `<div class="nav-btn" onclick="nav('wallet', this)"><i class="fa-solid fa-wallet"></i>เงิน</div>`; // เพิ่มปุ่มล่าง
+            navHtml += `<div class="nav-btn" onclick="nav('history', this)"><i class="fa-solid fa-list"></i>ประวัติ</div>`;
         }
 
         if (role === 'WAREHOUSE') {
