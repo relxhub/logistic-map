@@ -358,6 +358,7 @@
             if (role !== 'ADMIN') try { renderPoolList(data.pool_jobs || []); } catch(e){}
             try { renderMonitor(data.monitor_jobs || []); } catch(e){}
             try { renderCustomerList(); } catch(e){}
+            try { setupCustomerSearch(); } catch(e){ console.error(e); }
         }
 
         if (role === 'RIDER') {
@@ -1308,7 +1309,7 @@
         const list = data.saved_customers || [];
         
         // 👇 ชี้ไปที่ ID ของ datalist (ไม่ใช่ select)
-        const dl = document.getElementById('customer-list'); 
+        const dl = document.getElementById('customer-search-select'); 
         
         if(!dl) return; // ถ้าหาไม่เจอก็จบ
         
