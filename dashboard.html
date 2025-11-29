@@ -427,6 +427,7 @@
     // ✅ วางตรงนี้ครับ (บรรทัดแรกๆ ของ script)
     let selectedJobs = new Set();
     let selectedPoolJobs = new Set(); // ✅ ของ Pool (เพิ่มบรรทัดนี้)
+    let pendingPhone = "";
     
     // STATE
     let data = { role: 'GUEST' };
@@ -683,7 +684,8 @@
             contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
         }
         if(job.receiver_phone && job.receiver_phone !== '-') {
-            contactInfo += `<div style="margin-top:5px;">📞 เบอร์: <a href="tel:${job.receiver_phone}" style="text-decoration:none; color:inherit;"><b>${job.receiver_phone}</b></a></div>`;
+            // เปลี่ยนจาก <a href> เป็น <span onclick> เพื่อเรียก Modal
+            contactInfo += `<div style="margin-top:5px;">📞 เบอร์: <span onclick="promptCall('${job.receiver_phone}')" style="text-decoration:underline; color:var(--primary); cursor:pointer; font-weight:bold;">${job.receiver_phone}</span></div>`;
         }
         if(job.note && job.note !== '-') {
         contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
@@ -1144,6 +1146,8 @@
             sendAction('release_pool_selected', pendingPayload);
         } else if (modalActionType === 'pool_cancel') {
             sendAction('pool_cancel', pendingPayload);
+        } else if (modalActionType === 'call_phone') {
+            window.location.href = `tel:${pendingPhone}`;
         }
         
         closeModal();
@@ -1948,6 +1952,25 @@
         setTimeout(function(){ 
             x.className = x.className.replace("show", ""); 
         }, 2000);
+    }
+
+    // [เพิ่มใหม่] ฟังก์ชันเด้งถามก่อนโทร
+    function promptCall(phone) {
+        pendingPhone = phone; // จำเบอร์ไว้
+        modalActionType = 'call_phone'; // ตั้ง Type งาน
+
+        const content = `
+            <div style="text-align:center; padding:20px;">
+                <i class="fa-solid fa-phone-volume" style="font-size:40px; color:var(--primary); margin-bottom:15px;"></i>
+                <p style="font-size:16px;">ต้องการโทรหาปลายทาง?</p>
+                <div style="font-size:24px; font-weight:bold; color:#333; margin:10px 0;">${phone}</div>
+            </div>
+        `;
+
+        document.getElementById('modal-title').innerText = "📞 ยืนยันการโทร";
+        document.getElementById('modal-content').innerHTML = content;
+        document.querySelector('.btn-copy').style.display = 'none'; // ซ่อนปุ่ม Copy
+        document.getElementById('confirm-modal').style.display = 'flex'; // แสดง Modal
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
