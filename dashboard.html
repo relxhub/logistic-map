@@ -1307,9 +1307,11 @@
 
     function setupCustomerSearch() {
         const list = data.saved_customers || [];
-        const dl = document.getElementById('customer-list');
-        if(!dl) return;
-        dl.innerHTML = list.map(c => `<option value="${c.name} (${c.receiver_name})"></option>`).join('');
+        const sel = document.getElementById('customer-search-select');
+        if(!sel) return;
+        
+        sel.innerHTML = '<option value="">-- พิมพ์ค้นหา หรือ เลือกรายชื่อ --</option>' + 
+                        list.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     }
 
     // 2. เมื่อเลือกรายชื่อ -> เติมข้อมูล
