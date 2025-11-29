@@ -141,6 +141,11 @@
 
 <div id="view-pool" class="view"><h3>📦 Pool</h3><div id="pool-list"></div><button class="btn btn-primary" onclick="sendAction('release_all')">🚀 ปล่อยงานทั้งหมด</button></div>
 
+<div id="view-warehouse" class="view">
+    <h3>📦 ออเดอร์ (รอเตรียมของ)</h3>
+    <div id="warehouse-list"></div>
+</div>
+
 <div id="view-monitor" class="view"><h3>👀 Monitor</h3><div id="monitor-list"></div></div>
 
 <div id="view-rider" class="view">
@@ -254,6 +259,14 @@
             navHtml = nh;
         }
 
+        if (role === 'WAREHOUSE') {
+            menuHtml += `
+            <div class="menu-item" onclick="nav('warehouse')">
+                <i class="fa-solid fa-boxes-packing"></i><br>ออเดอร์ (เตรียมของ)
+            </div>`;
+            navHtml += `<div class="nav-btn" onclick="nav('warehouse', this)"><i class="fa-solid fa-box"></i>ออเดอร์</div>`;
+        }
+
         if (role === 'RIDER') {
             menuHtml += `
             <div class="menu-item" onclick="nav('rider')"><i class="fa-solid fa-motorcycle"></i><br>งานปัจจุบัน</div>
@@ -278,6 +291,10 @@
         if (role === 'RIDER') {
             try { renderRiderJob(data.current_job); } catch(e){}
             try { renderFullHistory(); } catch(e){} 
+        }
+
+        if (role === 'WAREHOUSE') {
+            try { renderWarehouseList(data.warehouse_jobs || []); } catch(e){}
         }
     }
 
@@ -582,13 +599,31 @@
     function renderPoolList(list) {
         const el = document.getElementById('pool-list');
         if(list.length === 0) { el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานใน Pool</div>'; return; }
-        el.innerHTML = list.map(j => `
-            <div class="card" style="border-left:4px solid #ffc107;">
+        
+        // นับเฉพาะงานที่พร้อมปล่อย (PENDING_POOL)
+        const readyCount = list.filter(j => j.status === 'PENDING_POOL').length;
+        document.getElementById('pool-count').innerText = readyCount;
+
+        el.innerHTML = list.map(j => {
+            let actionBtn = '';
+            
+            // ✅ Logic ล็อคปุ่ม
+            if (j.status === 'PREPARING') {
+                // ปุ่มสีเทา กดไม่ได้
+                actionBtn = `<button class="btn btn-outline btn-sm" disabled style="color:#999; border-color:#ddd;">⏳ กำลังเตรียมของ...</button>`;
+            } else {
+                // ปุ่มปกติ (พร้อมปล่อย)
+                actionBtn = `<button class="btn btn-primary btn-sm" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">🚀 ปล่อยงาน</button>`;
+            }
+
+            return `
+            <div class="card" style="border-left:4px solid ${j.status === 'PREPARING' ? '#ccc' : '#ffc107'};">
                 <div class="card-header">📝 ${j.bill_id}</div>
                 <div class="card-row">📍 รับ: ${j.pickup}</div>
-                <div class="card-actions"><button class="btn btn-primary btn-sm" onclick="sendAction('release_one', {job_id: '${j.job_id}'})">ปล่อยงาน</button></div>
+                <div class="card-actions">${actionBtn}</div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     // --- CREATE JOB & MODAL ---
@@ -819,6 +854,38 @@
                 }
             });
         });
+    }
+
+    function renderWarehouseList(list) {
+        const el = document.getElementById('warehouse-list'); // ต้องสร้าง div นี้ใน HTML ด้วย
+        if(!list || list.length === 0) { 
+            el.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">ไม่มีงานค้าง (เตรียมครบแล้ว)</div>'; 
+            return; 
+        }
+
+        let html = list.map(j => `
+            <div class="card" style="border-left: 4px solid #ffc107;">
+                <div class="card-header">📦 ${j.bill_id}</div>
+                <div class="card-row">👤 ผู้รับ: ${j.receiver_name}</div>
+                <div class="card-row">📞 เบอร์: ${j.receiver_phone}</div>
+                <div class="card-row">⏳ สถานะ: <b>กำลังเตรียมความพร้อม</b></div>
+                <div class="card-actions">
+                    <button class="btn btn-primary btn-sm" onclick="sendAction('warehouse_ready_one', {job_id: '${j.job_id}', bill_id: '${j.bill_id}'})">
+                        ✅ พัสดุพร้อมแล้ว
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // ปุ่มพร้อมทั้งหมด
+        html += `
+        <div style="padding: 10px 0;">
+            <button class="btn btn-success" onclick="if(confirm('ยืนยันว่าพัสดุทุกชิ้นพร้อมแล้ว?')) sendAction('warehouse_ready_all')">
+                🚀 พัสดุพร้อมทั้งหมด (${list.length})
+            </button>
+        </div>`;
+
+        el.innerHTML = html;
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
