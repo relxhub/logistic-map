@@ -146,6 +146,11 @@
 
 <div id="view-customers" class="view">
     <h3>📖 ที่อยู่ลูกค้า</h3>
+    
+    <div class="form-group" style="margin-bottom:10px;">
+        <input type="text" id="customer-filter-input" placeholder="🔍 ค้นหาชื่อ หรือ เบอร์โทร..." onkeyup="renderCustomerList()" style="padding:10px; border-radius:20px;">
+    </div>
+
     <div id="customer-list"></div>
     <div class="fab" onclick="goToAddCustomer()"><i class="fa-solid fa-plus"></i></div>
 </div>
@@ -380,7 +385,13 @@
 
         menu.innerHTML = menuHtml;
         menu.style.display = 'grid';
-        nav.innerHTML = navHtml + `<div class="nav-btn" onclick="tg.close()"><i class="fa-solid fa-xmark"></i>ปิด</div>`;
+        // [แก้ไข] เพิ่มปุ่ม "ลูกค้า" ให้ Admin/Sup/SuperAdmin และเอาปุ่ม "ปิด" ออก
+        if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
+            navHtml += `<div class="nav-btn" onclick="nav('customers', this)"><i class="fa-solid fa-address-book"></i>ลูกค้า</div>`;
+        }
+
+        // [แก้ไข] เอาปุ่ม tg.close() ออก แล้วใส่ HTML ลงไปตรงๆ
+        nav.innerHTML = navHtml;
 
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             try { renderPickupList(data.pickup_points || []); } catch(e){ console.error(e); }
@@ -1252,29 +1263,46 @@
     let editCustomerId = null;
 
     // 1. แสดงรายชื่อ (กรองตาม Role)
+    // [แก้ไข] อัปเกรดให้รองรับการค้นหา (Search)
     function renderCustomerList() {
         const list = data.saved_customers || [];
         const el = document.getElementById('customer-list');
         const myId = data.id;
-        
-        // กรอง: Admin เห็นแค่ของตัวเอง, หัวหน้าเห็นหมด
-        const filtered = list.filter(c => {
-            if (['SUPERADMIN', 'SUPERVISOR'].includes(data.role)) return true; 
-            if (data.role === 'ADMIN') return c.created_by === myId; 
+    
+        // รับค่าจากช่องค้นหา (ถ้ามี)
+        const searchInput = document.getElementById('customer-filter-input');
+        const keyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        // กรอง 1: ตาม Role และความเป็นเจ้าของ
+        let filtered = list.filter(c => {
+            if (['SUPERADMIN', 'SUPERVISOR'].includes(data.role)) return true;
+            if (data.role === 'ADMIN') return c.created_by === myId;
             return false;
         });
 
-        if(filtered.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ไม่พบข้อมูล</div>'; return; }
+        // กรอง 2: ตามคำค้นหา (ค้นชื่อที่บันทึก, ชื่อผู้รับ, เบอร์โทร)
+        if (keyword) {
+            filtered = filtered.filter(c => 
+             c.name.toLowerCase().includes(keyword) || 
+                (c.receiver_name && c.receiver_name.toLowerCase().includes(keyword)) ||
+                (c.receiver_phone && c.receiver_phone.includes(keyword))
+            );
+        }
+
+        if(filtered.length === 0) { 
+            el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ไม่พบข้อมูล</div>'; 
+            return; 
+        }
 
         el.innerHTML = filtered.map(c => `
-            <div class="card" style="position:relative;">
-                <div class="card-header"><i class="fa-solid fa-user-tag"></i> ${c.name}</div>
-                <div class="card-row">👤 ${c.receiver_name} | 📞 ${c.receiver_phone}</div>
-                <div class="card-actions">
-                    <button class="btn-icon" onclick="editCustomer('${c.id}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn-icon delete" onclick="if(confirm('ลบข้อมูลนี้?')) sendAction('delete_customer', {id: '${c.id}'})"><i class="fa-solid fa-trash"></i></button>
-                </div>
+        <div class="card" style="position:relative;">
+            <div class="card-header"><i class="fa-solid fa-user-tag"></i> ${c.name}</div>
+            <div class="card-row">👤 ${c.receiver_name || '-'} | 📞 ${c.receiver_phone || '-'}</div>
+            <div class="card-actions">
+                <button class="btn-icon" onclick="editCustomer('${c.id}')"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon delete" onclick="if(confirm('ลบข้อมูลนี้?')) sendAction('delete_customer', {id: '${c.id}'})"><i class="fa-solid fa-trash"></i></button>
             </div>
+        </div>
         `).join('');
     }
 
