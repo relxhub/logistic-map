@@ -2595,9 +2595,9 @@
         }
 
         // ไอคอนใหม่ (ตามแบบที่คุณต้องการ)
-        const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/3097/3097967.png", scaledSize: new google.maps.Size(40, 40) }; // มอไซค์เขียว
-        const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/1018/1018605.png", scaledSize: new google.maps.Size(40, 40) }; // ร้านค้า (ตึกสีฟ้า)
-        const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/684/684908.png", scaledSize: new google.maps.Size(36, 36) }; // หมุดแดง
+        const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/11735/11735014.png", scaledSize: new google.maps.Size(36, 36) }; // ไรเดอร์
+        const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(36, 36) }; // พัสดุ
+        const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(36, 36) }; // ปลายทาง
 
         // ปักหมุด
         new google.maps.Marker({ position: {lat:riderLat, lng:riderLng}, map: fullMap, icon: iconRider, zIndex:3 });
@@ -2610,7 +2610,7 @@
         // เส้นที่ 1 (น้ำเงิน)
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
         fullDirectionsDisplay1 = new google.maps.DirectionsRenderer({
-            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#2196F3", strokeWeight: 6, strokeOpacity: 0.8 }
+            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#023696", strokeWeight: 7, strokeOpacity: 0.5 }
         });
         directionsService.route({ origin: {lat:riderLat, lng:riderLng}, destination: {lat:pickupLat, lng:pickupLng}, travelMode: 'DRIVING' }, (res, status) => {
             if (status === "OK") fullDirectionsDisplay1.setDirections(res);
@@ -2619,7 +2619,7 @@
         // เส้นที่ 2 (เขียว)
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
         fullDirectionsDisplay2 = new google.maps.DirectionsRenderer({
-            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#4CAF50", strokeWeight: 6, strokeOpacity: 0.8 }
+            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#82a8ed", strokeWeight: 7, strokeOpacity: 0.5 }
         });
         directionsService.route({ origin: {lat:pickupLat, lng:pickupLng}, destination: {lat:dropoffLat, lng:dropoffLng}, travelMode: 'DRIVING' }, (res, status) => {
             if (status === "OK") fullDirectionsDisplay2.setDirections(res);
