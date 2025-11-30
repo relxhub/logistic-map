@@ -2566,8 +2566,25 @@
         const mapCanvas = document.getElementById('full-map-canvas');
         modal.style.display = 'block';
 
-        // สไตล์แผนที่แบบมืออาชีพ (Dark Mode)
+        // สไตล์แผนที่แบบมืออาชีพ (Dark Mode + Clean No Icons)
         const stylishMapStyles = [
+            // --- [ส่วนที่เพิ่ม] ซ่อนไอคอนสถานที่และป้ายต่างๆ ---
+            {
+                featureType: "poi",
+                stylers: [{ visibility: "off" }] // ซ่อนสถานที่ต่างๆ (ห้าง, วัด, ร้านค้า)
+            },
+            {
+                featureType: "transit",
+                stylers: [{ visibility: "off" }] // ซ่อนขนส่งสาธารณะ
+            },
+            {
+                featureType: "road",
+                elementType: "labels.icon",
+                stylers: [{ visibility: "off" }] // ซ่อนป้ายหมายเลขถนน (ถ้าอยากให้คลีนที่สุด)
+            },
+            // ------------------------------------------------
+
+            // --- สไตล์สี Dark Mode เดิมของคุณ ---
             { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
             { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
             { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
@@ -2657,7 +2674,7 @@
 
         // เส้นที่ 2 (น้ำเงินอ่อน/ส้ม)
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
-        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#FFA726"); // สีส้ม ให้เด่นบนพื้นมืด
+        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#6392eb"); // สีส้ม ให้เด่นบนพื้นมืด
         
         // จัดองค์ประกอบ
         const bounds = new google.maps.LatLngBounds();
