@@ -2417,6 +2417,13 @@
     function drawRoutePreview(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
         setTimeout(() => {
             const mapDiv = document.getElementById('route-preview-map');
+            // เพิ่ม Event คลิกเพื่อเปิดหน้าจอใหญ่
+            mapDiv.onclick = () => {
+                // เรียกฟังก์ชันเปิด Full Map โดยส่งพิกัดทั้งหมดไปด้วย
+                openFullMap(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng);
+            };
+            // เพิ่มสไตล์ให้รู้ว่าคลิกได้
+            mapDiv.style.cursor = 'pointer';
             if(!mapDiv) return;
 
             // 1. สร้างแผนที่
@@ -2535,11 +2542,110 @@
         }, 500);
     }
 
+    // --- [START] Fullscreen Map Logic ---
+
+    // เก็บตัวแปรแผนที่เต็มจอไว้
+    let fullMap = null;
+    let fullDirectionsDisplay1, fullDirectionsDisplay2;
+
+    // ฟังก์ชันปิด Modal
+    function closeFullMap() {
+        document.getElementById('fullMapModal').style.display = 'none';
+    }
+
+    // ฟังก์ชันเปิด Modal และวาดแผนที่เต็มจอ (High-Quality Style)
+    function openFullMap(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
+        const modal = document.getElementById('fullMapModal');
+        const mapCanvas = document.getElementById('full-map-canvas');
+        modal.style.display = 'block';
+
+        // สไตล์แผนที่แบบมืออาชีพ (คล้าย Grab/Google Maps App)
+        const stylishMapStyles = [
+            { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+            { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+            { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+            { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
+            { featureType: "administrative.land_parcel", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
+            { featureType: "poi", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
+            { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+            { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
+            { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+            { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+            { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+            { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
+            { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+            { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+            { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
+            { featureType: "transit.station", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
+            { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9c9c9" }] },
+            { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] }
+        ];
+
+        // สร้างแผนที่เต็มจอ (ซูม/เลื่อนได้)
+        if (!fullMap) {
+            fullMap = new google.maps.Map(mapCanvas, {
+                zoom: 13,
+                center: { lat: pickupLat, lng: pickupLng },
+                styles: stylishMapStyles, // ใส่สไตล์
+                disableDefaultUI: false, // เปิด UI ปุ่มซูมต่างๆ
+                gestureHandling: "greedy" // ให้เลื่อนได้ง่ายดาย
+            });
+        } else {
+            fullMap.setCenter({ lat: pickupLat, lng: pickupLng });
+        }
+
+        // ไอคอนใหม่ (ตามแบบที่คุณต้องการ)
+        const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/3097/3097967.png", scaledSize: new google.maps.Size(40, 40) }; // มอไซค์เขียว
+        const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/1018/1018605.png", scaledSize: new google.maps.Size(40, 40) }; // ร้านค้า (ตึกสีฟ้า)
+        const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/684/684908.png", scaledSize: new google.maps.Size(36, 36) }; // หมุดแดง
+
+        // ปักหมุด
+        new google.maps.Marker({ position: {lat:riderLat, lng:riderLng}, map: fullMap, icon: iconRider, zIndex:3 });
+        new google.maps.Marker({ position: {lat:pickupLat, lng:pickupLng}, map: fullMap, icon: iconPickup, zIndex:2 });
+        new google.maps.Marker({ position: {lat:dropoffLat, lng:dropoffLng}, map: fullMap, icon: iconDropoff, zIndex:1 });
+
+        // วาดเส้นทางจริง (เรียกซ้ำจากที่เราเคยคำนวณไว้แล้ว)
+        const directionsService = new google.maps.DirectionsService();
+
+        // เส้นที่ 1 (น้ำเงิน)
+        if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
+        fullDirectionsDisplay1 = new google.maps.DirectionsRenderer({
+            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#2196F3", strokeWeight: 6, strokeOpacity: 0.8 }
+        });
+        directionsService.route({ origin: {lat:riderLat, lng:riderLng}, destination: {lat:pickupLat, lng:pickupLng}, travelMode: 'DRIVING' }, (res, status) => {
+            if (status === "OK") fullDirectionsDisplay1.setDirections(res);
+        });
+
+        // เส้นที่ 2 (เขียว)
+        if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
+        fullDirectionsDisplay2 = new google.maps.DirectionsRenderer({
+            map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#4CAF50", strokeWeight: 6, strokeOpacity: 0.8 }
+        });
+        directionsService.route({ origin: {lat:pickupLat, lng:pickupLng}, destination: {lat:dropoffLat, lng:dropoffLng}, travelMode: 'DRIVING' }, (res, status) => {
+            if (status === "OK") fullDirectionsDisplay2.setDirections(res);
+        });
+        
+        // จัดองค์ประกอบ
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({lat:riderLat, lng:riderLng});
+        bounds.extend({lat:pickupLat, lng:pickupLng});
+        bounds.extend({lat:dropoffLat, lng:dropoffLng});
+        fullMap.fitBounds(bounds, { top: 80, bottom: 50, left: 50, right: 50 });
+    }
+    // --- [END] Fullscreen Map Logic ---
+
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', () => {
     try { setupFormNavigation(); } catch(e) {}
 });
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
+
+<div id="fullMapModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;">
+    <div style="position:relative; width:90%; height:90%; margin:5% auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+        <button onclick="closeFullMap()" style="position:absolute; top:15px; right:15px; z-index:10; background:#fff; border:none; width:35px; height:35px; border-radius:50%; font-size:18px; color:#666; box-shadow:0 2px 5px rgba(0,0,0,0.1);">✕</button>
+        <div id="full-map-canvas" style="width:100%; height:100%;"></div>
+    </div>
+</div>
 </body>
 </html>
