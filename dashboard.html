@@ -164,6 +164,29 @@
     <button class="btn btn-danger" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S</button>
 </div>
 
+<div id="view-broadcast" class="view">
+    <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
+    <h3>📢 ส่งประกาศ (Broadcast)</h3>
+    
+    <div class="form-group">
+        <label class="form-label">ข้อความ</label>
+        <textarea id="broadcast-msg" rows="4" placeholder="พิมพ์ข้อความที่นี่..."></textarea>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <label style="font-weight:bold;">เลือกผู้รับ (<span id="broadcast-count">0</span>)</label>
+        <div style="font-size:14px; color:var(--primary); cursor:pointer;" onclick="toggleAllRiders()">
+            <i class="fa-solid fa-check-double"></i> เลือกทั้งหมด
+        </div>
+    </div>
+
+    <div id="rider-broadcast-list" class="grid-menu" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+        <!-- Rider Items will be injected here -->
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:20px;" onclick="submitBroadcast()">🚀 ส่งข้อความ</button>
+</div>
+
 <div id="view-pickup" class="view">
     <h3>📍 จัดการจุดรับงาน</h3>
     <div id="pickup-list"></div>
@@ -480,6 +503,7 @@
         }
         if (role === 'SUPERADMIN') {
             menuHtml += `<div class="menu-item" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i><br>การเงิน</div>`;
+            menuHtml += `<div class="menu-item" onclick="nav('broadcast')"><i class="fa-solid fa-bullhorn"></i><br>ประกาศ</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
@@ -537,6 +561,10 @@
             try { renderCustomerList(); } catch(e){}
             try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFinance('pending'); } catch(e){}
+        }
+
+        if (role === 'SUPERADMIN') {
+            try { renderBroadcastList(); } catch(e){ console.error(e); }
         }
 
         if (role === 'WAREHOUSE') {
@@ -1527,6 +1555,78 @@
         
         // Focus ช่องกรอกชื่อ
         setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
+    }
+
+    // --- BROADCAST LOGIC ---
+    let selectedRiders = new Set();
+
+    function renderBroadcastList() {
+        const riders = data.all_riders || [];
+        const el = document.getElementById('rider-broadcast-list');
+        const countEl = document.getElementById('broadcast-count');
+        
+        if(countEl) countEl.innerText = selectedRiders.size;
+
+        if(riders.length === 0) { 
+            el.innerHTML = '<div style="grid-column: span 2; text-align:center; padding:20px; color:#999;">ไม่พบข้อมูลไรเดอร์</div>'; 
+            return; 
+        }
+
+        el.innerHTML = riders.map(r => {
+            const isSel = selectedRiders.has(r.id) ? 'selected' : '';
+            let statusColor = '#999';
+            if(r.status === 'IDLE') statusColor = '#00B900'; // ว่าง
+            else if(r.status === 'BUSY') statusColor = '#ffc107'; // ติดงาน
+            else if(r.status === 'BANNED') statusColor = '#dc3545'; // โดนแบน
+
+            return `
+            <div class="card ${isSel}" style="cursor:pointer; position:relative; padding:15px; border-left:4px solid ${statusColor};" onclick="toggleSelectRider('${r.id}')">
+                <i class="fa-solid fa-circle-check select-check"></i>
+                <div style="font-weight:bold; font-size:14px;">${r.name}</div>
+                <div style="font-size:12px; color:#666;">Status: <span style="color:${statusColor}; font-weight:bold;">${r.status || 'OFFLINE'}</span></div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleSelectRider(id) {
+        // แปลง id เป็น number หรือ string ให้ตรงกัน (backend ส่งมาเป็น int แต่บางที frontend เป็น string)
+        // เพื่อความชัวร์ ใช้ string เป็น key ใน Set
+        const idStr = String(id);
+        if(selectedRiders.has(idStr)) {
+            selectedRiders.delete(idStr);
+        } else {
+            selectedRiders.add(idStr);
+        }
+        renderBroadcastList();
+    }
+
+    function toggleAllRiders() {
+        const riders = data.all_riders || [];
+        if(selectedRiders.size === riders.length) {
+            // ถ้าเลือกครบแล้ว ให้เอาออกหมด
+            selectedRiders.clear();
+        } else {
+            // ถ้ายังเลือกไม่ครบ ให้เลือกทั้งหมด
+            riders.forEach(r => selectedRiders.add(String(r.id)));
+        }
+        renderBroadcastList();
+    }
+
+    function submitBroadcast() {
+        const msg = document.getElementById('broadcast-msg').value.trim();
+        if(selectedRiders.size === 0) return alert('กรุณาเลือกผู้รับอย่างน้อย 1 คน');
+        if(!msg) return alert('กรุณาพิมพ์ข้อความ');
+
+        if(confirm(`ยืนยันส่งข้อความหา ${selectedRiders.size} คน?`)) {
+            sendAction('broadcast_message', {
+                target_ids: Array.from(selectedRiders),
+                message: msg
+            });
+            // Clear form
+            document.getElementById('broadcast-msg').value = '';
+            selectedRiders.clear();
+            renderBroadcastList();
+        }
     }
 
     // --- ✅✅✅ [วางชุดนี้ลงไปครับ] CUSTOMER LOGIC ✅✅✅ ---
