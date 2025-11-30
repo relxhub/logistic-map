@@ -2513,10 +2513,10 @@
             new google.maps.Marker({ position: posC, map: map, icon: iconDropoff, zIndex: 1 });
 
             // คำนวณเส้นทาง
-            calculateAndDisplay(posA, posB, "#023696", (d, t) => {
+            calculateAndDisplay(posA, posB, "#ffffff", (d, t) => {
                 distAtoB = d; timeAtoB = t; updateDisplay();
             });
-            calculateAndDisplay(posB, posC, "#6392eb", (d, t) => {
+            calculateAndDisplay(posB, posC, "#dedede", (d, t) => {
                 distBtoC = d; timeBtoC = t; updateDisplay();
             });
 
@@ -2531,11 +2531,11 @@
                         <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #ddd; font-family:'Kanit'; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
                                 <span style="color:#023696;"><i class="fa-solid fa-motorcycle"></i> คุณ ➝ พัสดุ</span>
-                                <b>${distAtoB.toFixed(1)} กม. (${timeAtoB} น.)</b>
+                                <b>${distAtoB.toFixed(1)} กม. (${timeAtoB} นาที)</b>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
                                 <span style="color:#6392eb;"><i class="fa-solid fa-store"></i> พัสดุ ➝ ลูกค้า</span>
-                                <b>${distBtoC.toFixed(1)} กม. (${timeBtoC} น.)</b>
+                                <b>${distBtoC.toFixed(1)} กม. (${timeBtoC} นาที)</b>
                             </div>
                             <div style="height:1px; background:#eee; margin:5px 0;"></div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
@@ -2609,7 +2609,7 @@
                 if (status === "OK") {
                     renderer.setDirections(res);
                     const leg = res.routes[0].legs[0];
-                    const durationText = leg.duration.text.replace("mins", "น.").replace("min", "น.");
+                    const durationText = leg.duration.text.replace("mins", "นาที").replace("min", "นาที");
                     const path = res.routes[0].overview_path;
                     const midPoint = path[Math.floor(path.length / 2)]; 
 
@@ -2626,10 +2626,10 @@
         }
 
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
-        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#4285F4");
+        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#ffffff");
 
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
-        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#FFA726");
+        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#dedede");
         
         const bounds = new google.maps.LatLngBounds();
         bounds.extend({lat:riderLat, lng:riderLng});
