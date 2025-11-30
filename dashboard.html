@@ -2432,7 +2432,7 @@
         // 1. ซ่อนไอคอนสถานที่และป้ายต่างๆ (Clean Look)
         { featureType: "poi", stylers: [{ visibility: "off" }] },
         { featureType: "transit", stylers: [{ visibility: "off" }] },
-        { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+        { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "on" }] },
 
         // 2. ธีมมืด (Dark Mode)
         { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -2476,11 +2476,11 @@
             let distAtoB = 0, timeAtoB = 0;
             let distBtoC = 0, timeBtoC = 0;
 
-            function calculateAndDisplay(origin, destination, color, callback) {
+            function calculateAndDisplay(origin, destination, color, weight, callback) {
                 const renderer = new google.maps.DirectionsRenderer({
                     map: map,
                     suppressMarkers: true,
-                    polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.8 },
+                    polylineOptions: { strokeColor: color, strokeWeight: weight, strokeOpacity: 0.8 },
                     preserveViewport: true
                 });
 
@@ -2513,10 +2513,10 @@
             new google.maps.Marker({ position: posC, map: map, icon: iconDropoff, zIndex: 1 });
 
             // คำนวณเส้นทาง
-            calculateAndDisplay(posA, posB, "#ffffff", (d, t) => {
+            calculateAndDisplay(posA, posB, "#ffffff", 7, (d, t) => {
                 distAtoB = d; timeAtoB = t; updateDisplay();
             });
-            calculateAndDisplay(posB, posC, "#dedede", (d, t) => {
+            calculateAndDisplay(posB, posC, "#dedede", 7, (d, t) => {
                 distBtoC = d; timeBtoC = t; updateDisplay();
             });
 
@@ -2596,11 +2596,11 @@
 
         const directionsService = new google.maps.DirectionsService();
 
-        function drawFullLeg(origin, dest, color) {
+        function drawFullLeg(origin, dest, color, weight) {
             const renderer = new google.maps.DirectionsRenderer({
                 map: fullMap, 
                 suppressMarkers: true, 
-                polylineOptions: { strokeColor: color, strokeWeight: 7, strokeOpacity: 0.9 }
+                polylineOptions: { strokeColor: color, strokeWeight: weight, strokeOpacity: 0.9 }
             });
             
             directionsService.route({
@@ -2626,10 +2626,10 @@
         }
 
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
-        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#ffffff");
+        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#ffffff", 10);
 
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
-        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#dedede");
+        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#dedede", 10);
         
         const bounds = new google.maps.LatLngBounds();
         bounds.extend({lat:riderLat, lng:riderLng});
