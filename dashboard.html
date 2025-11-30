@@ -678,306 +678,127 @@
         }).join('');
     }
 
-    // [แก้ไข] ฟังก์ชันแสดงงานของ Rider (Interface ใหม่ พร้อมแผนที่)
+    // [แก้ไข] ฟังก์ชันแสดงงานของ Rider (ฉบับแก้ไข Syntax)
     function renderRiderJob(job) {
-        const viewEl = document.getElementById('view-rider');
-
-        // เคลียร์ Loop เก่า
-        if (window.riderLoop) clearInterval(window.riderLoop);
+        const el = document.getElementById('rider-job-card');
+    
+        // เคลียร์ Countdown เก่า (ถ้ามี)
         if (window.countdownInterval) clearInterval(window.countdownInterval);
-
-        // กรณีไม่มีงาน: ให้แสดง Interface ธรรมดา
-        if (!job) {
-            viewEl.innerHTML = `
-                <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
-                <h3>🛵 งานของคุณ</h3>
-                <div id="rider-job-card">
-                    <div style="text-align:center; padding:40px; color:#999;">ยังไม่มีงานเข้าครับ</div>
-                </div>`;
-            viewEl.style.padding = '15px';
-            viewEl.style.height = 'auto';
-            return;
+    
+        // ถ้าไม่มีงาน ให้แสดงคำว่าว่าง
+        if (!job) { 
+            el.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">ยังไม่มีงานเข้าครับ</div>'; 
+            return; 
         }
 
-        // เตรียม Layout ใหม่ (Full Screen Map + Bottom Card)
-        viewEl.style.padding = '0';
-        viewEl.style.height = '100vh';
-        viewEl.style.overflow = 'hidden';
-        viewEl.style.position = 'relative';
-
-        viewEl.innerHTML = `
-            <div id="rider-map" style="width:100%; height:60%;"></div>
-            
-            <div class="floating-back" onclick="nav('home')" style="position:absolute; top:20px; left:20px; z-index:10; background:white; padding:8px 12px; border-radius:20px; box-shadow:0 2px 5px rgba(0,0,0,0.2); cursor:pointer; font-weight:bold; color:#333;">
-                <i class="fa-solid fa-arrow-left"></i> เมนู
-            </div>
-
-            <div id="rider-info-card" style="position:absolute; bottom:0; left:0; width:100%; height:45%; background:white; border-radius:20px 20px 0 0; z-index:20; padding:20px; box-shadow:0 -5px 15px rgba(0,0,0,0.1); overflow-y:auto; box-sizing:border-box; transition: height 0.3s;">
-                <div style="text-align:center; margin-bottom:10px;"><div style="width:40px; height:5px; background:#ddd; border-radius:5px; margin:0 auto;"></div></div>
-                
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <div>
-                        <div style="font-size:12px; color:#888;">ระยะทาง (B -> C)</div>
-                        <div style="font-size:20px; font-weight:bold;" id="job-dist-text">...</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:12px; color:#888;">รายได้</div>
-                        <div style="font-size:24px; font-weight:bold; color:var(--primary);">${job.price.toFixed(2)} ฿</div>
-                    </div>
-                </div>
-                
-                <div class="timeline" style="margin-bottom:15px;">
-                    <div class="timeline-item" id="tl-pickup">
-                        <div class="timeline-marker pickup"></div>
-                        <div class="timeline-content">
-                            <div style="font-weight:bold;">${job.pickup_name}</div>
-                            <div style="font-size:12px; color:#666;" id="time-to-pickup">กำลังคำนวณเวลา...</div>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-item">
-                        <div class="timeline-marker dropoff"></div>
-                        <div class="timeline-content">
-                            <div style="font-weight:bold;">ปลายทาง (ลูกค้า)</div>
-                            <div style="font-size:12px; color:#666;" id="time-to-dropoff">...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="rider-actions"></div>
-            </div>
-
-            <style>
-                .timeline-item { display: flex; gap: 10px; margin-bottom: 10px; position: relative; }
-                .timeline-marker { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; z-index:1; }
-                .timeline-marker.pickup { background: #00B900; }
-                .timeline-marker.dropoff { background: #dc3545; }
-                .timeline-item::before {
-                    content: ''; position: absolute; top: 15px; left: 5px; width: 2px; height: 100%; background: #ddd; z-index:0;
-                }
-                .timeline-item:last-child::before { display: none; }
-            </style>
-        `;
-
-        // Render Action Buttons
-        const actionEl = document.getElementById('rider-actions');
         let btns = '';
+        let statusColor = '#00B900';
+        let statusText = 'งานของคุณ';
+        let extraHtml = '';
 
-        if (job.status === 'OFFERED') {
-            const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
-            const expireTime = new Date(job.updated_at).getTime() + (timeoutSec * 1000);
+        // ✅ แก้ไขลิงก์แผนที่ให้ถูกต้อง (ใช้ Google Maps Link มาตรฐาน)
+        const pickupMap = `https://www.google.com/maps/search/?api=1&query=${job.pickup_lat},${job.pickup_lng}`;
+        const dropoffMap = `https://www.google.com/maps/search/?api=1&query=${job.dropoff_lat},${job.dropoff_lng}`;
+
+        // --- ส่วน Contact Info ---
+        let contactInfo = '';
+        if(job.receiver_name && job.receiver_name !== '-') {
+            contactInfo += `<div style="margin-top:10px;">👤 ผู้รับ: <b>${job.receiver_name}</b></div>`;
+        }
+        // [แก้ไข] เปลี่ยนการแสดงผลเบอร์โทร ให้เรียกปุ่มขอเบอร์จากบอท
+        if(job.receiver_phone && job.receiver_phone !== '-') {
+            const cleanPhone = job.receiver_phone.replace(/[^0-9+]/g, '');
             
-            btns = `
-                <div id="job-countdown" style="text-align:center; color:#dc3545; font-weight:bold; margin-bottom:10px;">⏳ ...</div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-danger" onclick="sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ปฏิเสธ</button>
-                    <button class="btn btn-primary" onclick="acceptJobWithEta('${job.job_id}')">✅ รับงาน</button>
+            // ✅ เพิ่ม job.receiver_name เข้าไปเป็น parameter ตัวที่ 3
+            contactInfo += `
+                <div id="phone-wrapper" style="margin-top:10px;">
+                    <div style="font-size:14px; margin-bottom:5px;">📞 เบอร์โทรศัพท์:</div>
+                    <button class="btn btn-outline" onclick="showInlineCall('${cleanPhone}', '${job.receiver_phone}', '${job.receiver_name}')" style="width:100%; border:1px solid #ccc; color:#333; display:flex; justify-content:space-between; align-items:center; padding:10px;">
+                        <span>${job.receiver_phone}</span>
+                        <i class="fa-solid fa-phone" style="color:var(--primary);"></i>
+                    </button>
                 </div>`;
-            
-            // Countdown Logic
+        }
+        if(job.note && job.note !== '-') {
+        contactInfo += `<div style="background:#f8f9fa; border-left:3px solid #6c757d; padding:8px; margin:10px 0; font-size:13px; border-radius:4px;">📝 <b>Note:</b> ${job.note}</div>`;
+        }
+
+        // --- Logic ปุ่มกดตามสถานะ ---
+        if (job.status === 'OFFERED') {
+            statusColor = '#ffc107';
+            statusText = '🔔 งานใหม่มาแล้ว!';
+        
+            // คำนวณเวลานับถอยหลัง
+            const timeoutSec = (data.config && data.config.offer_timeout_sec) ? parseInt(data.config.offer_timeout_sec) : 60;
+            const serverTime = data.server_time ? new Date(data.server_time).getTime() : new Date().getTime();
+            const clientTime = new Date().getTime();
+            const timeDiff = clientTime - serverTime;
+            const expireTime = new Date(job.updated_at).getTime() + (timeoutSec * 1000);
+
+            extraHtml = `<div id="job-countdown" style="text-align:center; font-size:24px; font-weight:bold; color:#d9534f; margin:10px 0;">...</div>`;
+        
+            btns = `
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="sendAction('accept_offer', {job_id:'${job.job_id}'})">✅ รับงานนี้</button>
+                <button class="btn btn-danger" onclick="if(confirm('ต้องการปฏิเสธงานนี้?')) sendAction('reject_offer', {job_id:'${job.job_id}'})">❌ ไม่รับ</button>
+            </div>
+            `;
+
+            // เริ่มนับถอยหลัง
             window.countdownInterval = setInterval(() => {
-                const diff = expireTime - new Date().getTime(); // ใช้เวลาเครื่องลูกข่ายเทียบคร่าวๆ
+                const nowAdjusted = new Date().getTime() - timeDiff;
+                const diff = expireTime - nowAdjusted;
                 if (diff <= 0) {
                     clearInterval(window.countdownInterval);
-                    window.location.reload();
+                    const cdEl = document.getElementById('job-countdown');
+                    if(cdEl) cdEl.innerText = "หมดเวลา!";
+                    // Refresh หน้าจออัตโนมัติเมื่อหมดเวลา
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    document.getElementById('job-countdown').innerText = `⏳ เหลือเวลาตัดสินใจ ${Math.floor(diff/1000)} วินาที`;
+                    const s = Math.floor(diff / 1000);
+                    const cdEl = document.getElementById('job-countdown');
+                    if(cdEl) cdEl.innerText = `⏳ ${s} วิ`;
                 }
             }, 1000);
 
-        } else if (job.status === 'ASSIGNED') {
+        } else if(job.status === 'ASSIGNED') {
             btns = `
-                <button class="btn btn-warning" onclick="if(confirm('ยืนยันรับพัสดุแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
-                    📦 รับพัสดุแล้ว
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="${pickupMap}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                    <i class="fa-solid fa-location-arrow"></i> นำทางไปจุดรับ
+                </a>
+                <button class="btn btn-warning" onclick="if(confirm('รับของแล้ว?')) sendAction('rider_update', {status:'PICKED_UP', job_id:'${job.job_id}'})">
+                    <i class="fa-solid fa-box-open"></i> รับของแล้ว
                 </button>
-                <div style="margin-top:10px; display:flex; gap:5px;">
-                     <button class="btn btn-outline btn-sm" onclick="cancelJob('${job.job_id}')">ยกเลิกงาน</button>
-                     <a href="https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}" target="_blank" class="btn btn-outline btn-sm" style="flex:1;">📍 นำทาง (Google)</a>
-                </div>
-            `;
+                <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')"><i class="fa-solid fa-ban"></i> ยกเลิกงาน</button>
+            </div>`;
+
         } else if (job.status === 'PICKED_UP') {
-            document.getElementById('tl-pickup').style.display = 'none'; // ซ่อนจุดรับ
             btns = `
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="${dropoffMap}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                    <i class="fa-solid fa-flag-checkered"></i> นำทางไปจุดส่ง
+                </a>
                 <button class="btn btn-finish" onclick="showFinishConfirm('${job.job_id}')">
-                    📸 ถ่ายรูปส่งงาน
+                    <i class="fa-solid fa-camera"></i> ถ่ายรูปส่งงาน
                 </button>
-                <div style="margin-top:10px;">
-                     <a href="https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;">📍 นำทางไปจุดส่ง</a>
-                </div>
-            `;
-            
-            // เพิ่มปุ่มโทรหาลูกค้า
-            if (job.receiver_phone) {
-                 const cleanPhone = job.receiver_phone.replace(/[^0-9+]/g, '');
-                 btns += `<button class="btn btn-outline" style="margin-top:10px; color:var(--primary); border-color:var(--primary);" onclick="showInlineCall('${cleanPhone}', '${job.receiver_phone}', '${job.receiver_name}')">📞 โทรหาลูกค้า</button>`;
-            }
+            </div>`;
         }
 
-        actionEl.innerHTML = btns;
-
-        // Init Map Logic
-        setTimeout(() => initRiderMap(job), 200);
-    }
-
-    let riderMap, riderDirectionsService, riderDirectionsRenderer;
-    let riderWatchId;
-    let calculatedTotalDurationText = "30-45 นาที"; // Default
-
-    function initRiderMap(job) {
-        if (!window.google) return;
+        // Render HTML
+        el.innerHTML = `
+        <div class="card" style="border-left:5px solid ${statusColor};">
+            <h2 style="color:${statusColor}; margin-top:0;">${statusText}</h2>
+            ${extraHtml}
+            <h3 style="margin-bottom:5px;">${job.bill_id}</h3>
+            <div style="color:#666; font-size:12px; margin-bottom:10px;">Order #${job.order_no || '-'}</div>
         
-        const mapEl = document.getElementById('rider-map');
-        if(!mapEl) return;
-
-        riderDirectionsService = new google.maps.DirectionsService();
-        riderDirectionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: true });
-
-        // 1. Init Map
-        riderMap = new google.maps.Map(mapEl, {
-            zoom: 13,
-            center: { lat: job.pickup_lat, lng: job.pickup_lng },
-            disableDefaultUI: true,
-            gestureHandling: "greedy"
-        });
-        riderDirectionsRenderer.setMap(riderMap);
-
-        // 2. Add Static Markers (B & C)
-        const pickupLoc = { lat: job.pickup_lat, lng: job.pickup_lng };
-        const dropoffLoc = { lat: job.dropoff_lat, lng: job.dropoff_lng };
-
-        // Marker B (Pickup) - Show only if not picked up
-        if (job.status !== 'PICKED_UP') {
-            new google.maps.Marker({
-                position: pickupLoc,
-                map: riderMap,
-                label: "B",
-                icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-            });
-        }
-
-        // Marker C (Dropoff)
-        new google.maps.Marker({
-            position: dropoffLoc,
-            map: riderMap,
-            label: "C",
-            icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-        });
-
-        // 3. Get User Location (Marker A) & Calculate Route
-        if (navigator.geolocation) {
-            riderWatchId = navigator.geolocation.watchPosition((pos) => {
-                const userLat = pos.coords.latitude;
-                const userLng = pos.coords.longitude;
-                const userLoc = { lat: userLat, lng: userLng };
-
-                // Update/Create Marker A
-                if (window.riderMarkerA) window.riderMarkerA.setPosition(userLoc);
-                else {
-                    window.riderMarkerA = new google.maps.Marker({
-                        position: userLoc,
-                        map: riderMap,
-                        label: "A",
-                        icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" // Rider
-                    });
-                    riderMap.setCenter(userLoc);
-                }
-
-                // Calculate Route
-                updateRoute(userLoc, pickupLoc, dropoffLoc, job.status);
-
-                // Check Proximity (Alert Logic)
-                checkProximity(userLat, userLng, job);
-
-            }, (err) => console.error(err), { enableHighAccuracy: true });
-        }
-    }
-
-    function updateRoute(userLoc, pickupLoc, dropoffLoc, status) {
-        const waypoints = [];
-        let origin = userLoc;
-        let dest = dropoffLoc;
-
-        if (status !== 'PICKED_UP') {
-            // A -> B -> C
-            waypoints.push({ location: pickupLoc, stopover: true });
-        } else {
-            // A -> C (B is gone)
-            // origin = userLoc, dest = dropoffLoc (Direct)
-        }
-
-        riderDirectionsService.route({
-            origin: origin,
-            destination: dest,
-            waypoints: waypoints,
-            travelMode: google.maps.TravelMode.DRIVING
-        }, (response, status) => {
-            if (status === "OK") {
-                riderDirectionsRenderer.setDirections(response);
-                
-                // Extract Info
-                const legs = response.routes[0].legs;
-                let totalDistVal = 0;
-                let totalDurationVal = 0;
-                let textAtoB = "";
-                let textBtoC = "";
-                let distBtoC = "";
-
-                if (waypoints.length > 0) {
-                    // Leg 0: A -> B
-                    // Leg 1: B -> C
-                    textAtoB = legs[0].duration.text;
-                    if (legs[1]) {
-                        textBtoC = legs[1].duration.text;
-                        distBtoC = legs[1].distance.text;
-                        totalDistVal = legs[1].distance.value; // meters
-                    }
-                } else {
-                    // Leg 0: A -> C
-                    textBtoC = legs[0].duration.text; // Current to Dropoff
-                    distBtoC = legs[0].distance.text;
-                }
-
-                // Update UI
-                const pEl = document.getElementById('time-to-pickup');
-                const dEl = document.getElementById('time-to-dropoff');
-                const distEl = document.getElementById('job-dist-text');
-
-                if (pEl) pEl.innerText = textAtoB ? `เดินทาง ${textAtoB}` : 'ถึงแล้ว / ผ่านมาแล้ว';
-                if (dEl) dEl.innerText = `เดินทาง ${textBtoC}`;
-                if (distEl && distBtoC) distEl.innerText = distBtoC;
-
-                // Save for Accept
-                calculatedTotalDurationText = `~${Math.ceil((totalDurationVal + (legs[0].duration.value||0))/60)} นาที`;
-            }
-        });
-    }
-
-    function acceptJobWithEta(jobId) {
-        sendAction('accept_offer', { job_id: jobId, eta_text: calculatedTotalDurationText });
-    }
-
-    function checkProximity(lat, lng, job) {
-        if (job.status === 'COMPLETED') return;
-        
-        // Only alert if heading to Dropoff
-        const targetLat = job.dropoff_lat;
-        const targetLng = job.dropoff_lng;
-        
-        const distKm = calcDist(lat, lng, targetLat, targetLng);
-        const speed = (config && config.avg_speed) ? parseFloat(config.avg_speed) : 40; // km/h
-        const timeHours = distKm / speed;
-        const timeMin = timeHours * 60;
-        
-        const threshold = (config && config.alert_threshold) ? parseFloat(config.alert_threshold) : 5;
-
-        // Check if < threshold mins AND not already alerted locally
-        const storageKey = `alert_near_${job.job_id}`;
-        if (timeMin <= threshold && !localStorage.getItem(storageKey)) {
-            // Trigger
-            sendAction('notify_near', { job_id: job.job_id });
-            localStorage.setItem(storageKey, 'true');
-            showToast("🔔 แจ้งเตือนลูกค้าว่าใกล้ถึงแล้ว");
-        }
+            <p>💰 ค่าเที่ยว: <b>${job.price} ฿</b> ${job.extra_fee > 0 ? `<span style="color:red; font-size:12px;">(+เพิ่ม ${job.extra_fee})</span>` : ''}</p>
+            <p>📍 รับ: ${job.pickup_name}</p>
+            <hr style="border:0; border-top:1px dashed #ddd; margin:10px 0;">
+            ${contactInfo}
+            <div style="margin-top:15px;">${btns}</div>
+        </div>`;
     }
 
     function confirmPoolDispatchSelected() {
@@ -2537,5 +2358,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzn1_v_MRFa2FpMjEeVBsdRtZ4dfZPo4w&libraries=places&callback=initMap" async defer></script>
 </body>
-</html><!-- Fixed duplicate broadcast view and synced -->
-<!-- Fixed duplicate broadcast view and synced -->
+</html>
