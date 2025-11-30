@@ -79,7 +79,7 @@
 
     .card.selected {
     border: 2px solid var(--primary) !important;
-    background-color: #d1e7dd !important;
+    background-color: #e8f5e9;
     transform: scale(0.98);
     }
     .select-check {
@@ -162,29 +162,6 @@
     <h2 style="font-size:18px; margin:0 0 15px 0;">เมนูหลัก</h2>
     <div class="grid-menu" id="menu-container"></div>
     <button class="btn btn-danger" style="margin-top:30px;" onclick="confirmSOS()">🚨 S.O.S</button>
-</div>
-
-<div id="view-broadcast" class="view">
-    <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
-    <h3>📢 ส่งประกาศ (Broadcast)</h3>
-    
-    <div class="form-group">
-        <label class="form-label">ข้อความ</label>
-        <textarea id="broadcast-msg" rows="4" placeholder="พิมพ์ข้อความที่นี่..."></textarea>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <label style="font-weight:bold;">เลือกผู้รับ (<span id="broadcast-count">0</span>)</label>
-        <div style="font-size:14px; color:var(--primary); cursor:pointer;" onclick="toggleAllRiders()">
-            <i class="fa-solid fa-check-double"></i> เลือกทั้งหมด
-        </div>
-    </div>
-
-    <div id="rider-broadcast-list" class="grid-menu" style="grid-template-columns: 1fr 1fr; gap: 10px;">
-        <!-- Rider Items will be injected here -->
-    </div>
-
-    <button class="btn btn-primary" style="margin-top:20px;" onclick="submitBroadcast()">🚀 ส่งข้อความ</button>
 </div>
 
 <div id="view-pickup" class="view">
@@ -503,7 +480,6 @@
         }
         if (role === 'SUPERADMIN') {
             menuHtml += `<div class="menu-item" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i><br>การเงิน</div>`;
-            menuHtml += `<div class="menu-item" onclick="nav('broadcast')"><i class="fa-solid fa-bullhorn"></i><br>ประกาศ</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
@@ -561,10 +537,6 @@
             try { renderCustomerList(); } catch(e){}
             try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFinance('pending'); } catch(e){}
-        }
-
-        if (role === 'SUPERADMIN') {
-            try { renderBroadcastList(); } catch(e){ console.error(e); }
         }
 
         if (role === 'WAREHOUSE') {
@@ -881,9 +853,6 @@
         if(el) {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-        }
-        if(id === 'broadcast') {
-            try { renderBroadcastList(); } catch(e){}
         }
     }
     
@@ -1560,78 +1529,6 @@
         setTimeout(() => document.getElementById('save-customer-name').focus(), 100);
     }
 
-    // --- BROADCAST LOGIC ---
-    let selectedRiders = new Set();
-
-    function renderBroadcastList() {
-        const riders = data.all_riders || [];
-        const el = document.getElementById('rider-broadcast-list');
-        const countEl = document.getElementById('broadcast-count');
-        
-        if(countEl) countEl.innerText = selectedRiders.size;
-
-        if(riders.length === 0) { 
-            el.innerHTML = '<div style="grid-column: span 2; text-align:center; padding:20px; color:#999;">ไม่พบข้อมูลไรเดอร์</div>'; 
-            return; 
-        }
-
-        el.innerHTML = riders.map(r => {
-            const isSel = selectedRiders.has(String(r.id)) ? 'selected' : '';
-            let statusColor = '#999';
-            if(r.status === 'IDLE') statusColor = '#00B900'; // ว่าง
-            else if(r.status === 'BUSY') statusColor = '#ffc107'; // ติดงาน
-            else if(r.status === 'BANNED') statusColor = '#dc3545'; // โดนแบน
-
-            return `
-            <div class="card ${isSel}" style="cursor:pointer; position:relative; padding:15px; border-left:4px solid ${statusColor};" onclick="toggleSelectRider('${r.id}')">
-                <i class="fa-solid fa-circle-check select-check"></i>
-                <div style="font-weight:bold; font-size:14px;">${r.name}</div>
-                <div style="font-size:12px; color:#666;">Status: <span style="color:${statusColor}; font-weight:bold;">${r.status || 'OFFLINE'}</span></div>
-            </div>`;
-        }).join('');
-    }
-
-    function toggleSelectRider(id) {
-        // แปลง id เป็น number หรือ string ให้ตรงกัน (backend ส่งมาเป็น int แต่บางที frontend เป็น string)
-        // เพื่อความชัวร์ ใช้ string เป็น key ใน Set
-        const idStr = String(id);
-        if(selectedRiders.has(idStr)) {
-            selectedRiders.delete(idStr);
-        } else {
-            selectedRiders.add(idStr);
-        }
-        renderBroadcastList();
-    }
-
-    function toggleAllRiders() {
-        const riders = data.all_riders || [];
-        if(selectedRiders.size === riders.length) {
-            // ถ้าเลือกครบแล้ว ให้เอาออกหมด
-            selectedRiders.clear();
-        } else {
-            // ถ้ายังเลือกไม่ครบ ให้เลือกทั้งหมด
-            riders.forEach(r => selectedRiders.add(String(r.id)));
-        }
-        renderBroadcastList();
-    }
-
-    function submitBroadcast() {
-        const msg = document.getElementById('broadcast-msg').value.trim();
-        if(selectedRiders.size === 0) return alert('กรุณาเลือกผู้รับอย่างน้อย 1 คน');
-        if(!msg) return alert('กรุณาพิมพ์ข้อความ');
-
-        if(confirm(`ยืนยันส่งข้อความหา ${selectedRiders.size} คน?`)) {
-            sendAction('broadcast_message', {
-                target_ids: Array.from(selectedRiders),
-                message: msg
-            });
-            // Clear form
-            document.getElementById('broadcast-msg').value = '';
-            selectedRiders.clear();
-            renderBroadcastList();
-        }
-    }
-
     // --- ✅✅✅ [วางชุดนี้ลงไปครับ] CUSTOMER LOGIC ✅✅✅ ---
     let editCustomerId = null;
 
@@ -1877,7 +1774,23 @@
         });
     }
 
-    // [ส่วนที่แก้ไข] อัปเดต renderWallet ให้แสดงข้อมูลธนาคาร
+    // [เพิ่ม] Helper สำหรับ Toggle Detail ใน Wallet
+    function toggleTxDetail(id) {
+        const el = document.getElementById('tx-detail-' + id);
+        if (el) {
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // [เพิ่ม] Helper สำหรับ Toggle Total Income
+    function toggleTotalIncome() {
+        const valEl = document.getElementById('wallet-total-income-val');
+        if (valEl) {
+            valEl.style.display = valEl.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // [ส่วนที่แก้ไข] อัปเดต renderWallet ให้แสดงข้อมูลธนาคาร และ Total Income
     function renderWallet() {
         const w = data.wallet;
         if(!w) return;
@@ -1887,9 +1800,27 @@
         // 1. เพิ่มส่วนแสดงผลธนาคาร
         const bank = data.bank_info;
         const walletCard = document.querySelector('#view-wallet .card'); 
+        
+        // ลบส่วนที่เคย append ไว้ก่อนหน้า (ถ้ามี) เพื่อไม่ให้ซ้ำ
         const oldBankInfo = document.getElementById('wallet-bank-display');
-        if(oldBankInfo) oldBankInfo.remove(); // ลบของเก่าออกก่อน (ถ้ามี)
+        if(oldBankInfo) oldBankInfo.remove();
+        const oldTotalInc = document.getElementById('wallet-total-income');
+        if(oldTotalInc) oldTotalInc.remove();
 
+        // 1.1 แสดงยอดรายได้รวม (Total Income)
+        if (w.total_income !== undefined) {
+            const totalHtml = `
+            <div id="wallet-total-income" style="margin-top:15px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.3); cursor:pointer;" onclick="toggleTotalIncome()">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:12px; opacity:0.9;">รายได้ทั้งหมด</div>
+                    <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+                </div>
+                <div id="wallet-total-income-val" style="font-size:18px; font-weight:bold; margin-top:5px; display:none;">${w.total_income.toLocaleString()} ฿</div>
+            </div>`;
+            walletCard.insertAdjacentHTML('beforeend', totalHtml);
+        }
+
+        // 1.2 แสดงบัญชีธนาคาร
         let bankHtml = '';
         if(bank && bank.acc_no) {
             bankHtml = `
@@ -1904,7 +1835,7 @@
         }
         walletCard.insertAdjacentHTML('beforeend', bankHtml);
 
-        // 2. แสดงรายการ (เหมือนเดิม)
+        // 2. แสดงรายการ (แก้ไขให้มี Detail)
         const el = document.getElementById('wallet-history-list');
         if(w.history.length === 0) { el.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการ</div>'; return; }
 
@@ -1915,20 +1846,53 @@
             let icon = isIncome ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
             if (t.type === 'REFUND') icon = 'fa-rotate-left';
         
-            // ถ้าสถานะเป็น REJECTED ให้เป็นสีเทา
-            const itemStyle = t.status === 'REJECTED' ? 'opacity:0.6; text-decoration:line-through;' : '';
-            if (t.status === 'REJECTED') color = '#999';
+            // Note: สำหรับรายการถอน ถ้า REJECTED จะเปลี่ยนสี
+            if (t.status === 'REJECTED') {
+                color = '#dc3545'; 
+            }
+            
+            // เตรียม Detail HTML
+            let detailHtml = '';
+            
+            // ถ้าเป็นรายการถอน (WITHDRAW)
+            if (t.type === 'WITHDRAW') {
+                if (t.status === 'COMPLETED' && t.slip) {
+                    detailHtml += `<div style="margin-top:10px;"><a href="${t.slip}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;">📄 ดูสลิปโอนเงิน</a></div>`;
+                } else if (t.status === 'REJECTED' && t.note) {
+                    detailHtml += `<div style="margin-top:10px; padding:8px; background:#fff3cd; border-radius:5px; font-size:12px; color:#856404;"><i class="fa-solid fa-circle-exclamation"></i> <b>เหตุผลที่ปฏิเสธ:</b> ${t.note}</div>`;
+                }
+            }
+
+            // ถ้ามี Detail ให้แสดง Icon Chevron
+            const hasDetail = detailHtml !== '';
+            const chevron = hasDetail ? `<i class="fa-solid fa-chevron-down" style="color:#ccc; font-size:12px;"></i>` : '';
+            const onClickAttr = hasDetail ? `onclick="toggleTxDetail('${t.id}')"` : '';
+
+            // ปรับสี Icon ถ้า Rejected
+            if (t.status === 'REJECTED') {
+                 icon = 'fa-circle-xmark';
+                 color = '#FFC107'; 
+            }
 
             return `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center; ${itemStyle}">
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <i class="fa-solid ${icon}" style="font-size:24px; color:${color};"></i>
-                    <div>
-                        <div style="font-weight:bold;">${t.note || t.type}</div>
-                        <div style="font-size:10px; color:#888;">${t.date} <span class="role-badge" style="font-size:9px;">${t.status}</span></div>
+            <div class="card" ${onClickAttr} style="cursor:pointer;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <i class="fa-solid ${icon}" style="font-size:24px; color:${color};"></i>
+                        <div>
+                            <div style="font-weight:bold;">${t.note || t.type}</div>
+                            <div style="font-size:10px; color:#888;">${t.date} <span class="role-badge" style="font-size:9px;">${t.status}</span></div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:bold; color:${color}; font-size:16px;">${sign}${t.amount.toLocaleString()} ฿</div>
+                        ${chevron}
                     </div>
                 </div>
-                <div style="font-weight:bold; color:${color}; font-size:16px;">${sign}${t.amount.toLocaleString()} ฿</div>
+                <div id="tx-detail-${t.id}" style="display:none; margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">
+                    <div style="font-size:12px; color:#666;">Ref: ${t.id}</div>
+                    ${detailHtml}
+                </div>
             </div>`;
         }).join('');
     }
@@ -2080,8 +2044,13 @@
     // ฟังก์ชันดำเนินการถอนเงิน (พร้อมอัปโหลดรูป)
     async function processWithdraw(txId, decision) {
         if (decision === 'REJECT') {
-            if(!confirm('ยืนยันปฏิเสธการโอนเงิน? (ยอดเงินจะคืนกลับไปหาไรเดอร์)')) return;
-            sendAction('admin_process_withdraw', { tx_id: txId, decision: 'REJECT' });
+            const reason = prompt("กรุณาระบุเหตุผลที่ปฏิเสธ (ไรเดอร์จะเห็นข้อความนี้):");
+            if (reason === null) return; // กด Cancel
+            if (!reason.trim()) return alert("กรุณาระบุเหตุผลด้วยครับ");
+
+            if(!confirm(`ยืนยันปฏิเสธด้วยเหตุผล: "${reason}"?`)) return;
+            
+            sendAction('admin_process_withdraw', { tx_id: txId, decision: 'REJECT', reason: reason });
             return;
         }
 
