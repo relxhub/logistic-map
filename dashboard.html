@@ -2426,7 +2426,7 @@
     }
 
     // ==================================================
-    // [UPDATE] ฟังก์ชันวาดแผนที่ (แมพเล็ก - ไม่มีป้ายเวลา)
+    // [UPDATE] ฟังก์ชันวาดแผนที่ (แมพเล็ก: ไม่มีป้ายเวลา, เส้นทึบ)
     // ==================================================
     function drawRoutePreview(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
         setTimeout(() => {
@@ -2454,11 +2454,12 @@
             let distAtoB = 0, timeAtoB = 0;
             let distBtoC = 0, timeBtoC = 0;
 
-            // [Helper] ฟังก์ชันวาดเส้น (แบบไม่มีป้ายเวลา)
+            // [Helper] ฟังก์ชันวาดเส้น (ไม่มีป้ายเวลา)
             function calculateAndDisplay(origin, destination, color, callback) {
                 const renderer = new google.maps.DirectionsRenderer({
                     map: map,
                     suppressMarkers: true,
+                    // ✅ ใช้ DRIVING เพื่อให้เส้นเป็นเส้นทึบ (ไม่เป็นจุด)
                     polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.8 },
                     preserveViewport: true
                 });
@@ -2466,7 +2467,7 @@
                 directionsService.route({
                     origin: origin,
                     destination: destination,
-                    travelMode: google.maps.TravelMode.TWO_WHEELER,
+                    travelMode: google.maps.TravelMode.DRIVING, // ✅ แก้เป็น DRIVING แก้ปัญหาเส้นจุด
                     drivingOptions: {
                         departureTime: new Date(),
                         trafficModel: 'bestguess'
@@ -2479,7 +2480,7 @@
                         const distVal = leg.distance.value / 1000;
                         const timeVal = Math.ceil(leg.duration.value / 60);
                         
-                        // ❌ แมพเล็ก: ไม่ต้องสร้าง Marker ป้ายเวลาตรงนี้ ❌
+                        // (แมพเล็ก ไม่ต้องสร้าง Marker ป้ายเวลา)
 
                         callback(distVal, timeVal);
                     } else {
@@ -2547,7 +2548,7 @@
         }, 500);
     }
 
-    // --- [START] Fullscreen Map Logic ---
+    // --- [START] Fullscreen Map Logic (แมพใหญ่: มีป้ายเวลา, เส้นทึบ) ---
 
     // เก็บตัวแปรแผนที่เต็มจอไว้
     let fullMap = null;
@@ -2559,7 +2560,7 @@
         document.getElementById('fullMapModal').style.display = 'none';
     }
 
-    // ฟังก์ชันเปิด Modal และวาดแผนที่เต็มจอ (High-Quality Style)
+    // ฟังก์ชันเปิด Modal และวาดแผนที่เต็มจอ
     function openFullMap(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
         const modal = document.getElementById('fullMapModal');
         const mapCanvas = document.getElementById('full-map-canvas');
@@ -2592,7 +2593,7 @@
             });
         } else {
             fullMap.setCenter({ lat: pickupLat, lng: pickupLng });
-            // เคลียร์ป้ายเวลาเก่า
+            // เคลียร์ป้ายเวลาเก่าออกก่อนวาดใหม่
             fullTimeLabels.forEach(label => label.setMap(null));
             fullTimeLabels = [];
         }
@@ -2619,7 +2620,9 @@
             });
             
             directionsService.route({
-                origin: origin, destination: dest, travelMode: 'TWO_WHEELER'
+                origin: origin, destination: dest, 
+                // ✅ ใช้ DRIVING เพื่อให้เส้นทึบ
+                travelMode: google.maps.TravelMode.DRIVING 
             }, (res, status) => {
                 if (status === "OK") {
                     renderer.setDirections(res);
@@ -2629,12 +2632,12 @@
                     const durationText = leg.duration.text.replace("mins", "น.").replace("min", "น.");
                     
                     const path = res.routes[0].overview_path;
-                    const midPoint = path[Math.floor(path.length / 2)]; // จุดกึ่งกลาง
+                    const midPoint = path[Math.floor(path.length / 2)]; // หาจุดกึ่งกลางเส้น
 
                     const labelMarker = new google.maps.Marker({
                         position: midPoint,
                         map: fullMap,
-                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 }, // ซ่อนหมุด
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 }, // ซ่อนหมุดวงกลม
                         label: {
                             text: durationText, // เช่น "11 น."
                             className: "map-time-label",
