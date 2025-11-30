@@ -79,7 +79,7 @@
 
     .card.selected {
     border: 2px solid var(--primary) !important;
-    background-color: #e8f5e9;
+    background-color: #d1e7dd !important;
     transform: scale(0.98);
     }
     .select-check {
@@ -882,6 +882,9 @@
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
         }
+        if(id === 'broadcast') {
+            try { renderBroadcastList(); } catch(e){}
+        }
     }
     
     function goToPage(page) {
@@ -1573,7 +1576,7 @@
         }
 
         el.innerHTML = riders.map(r => {
-            const isSel = selectedRiders.has(r.id) ? 'selected' : '';
+            const isSel = selectedRiders.has(String(r.id)) ? 'selected' : '';
             let statusColor = '#999';
             if(r.status === 'IDLE') statusColor = '#00B900'; // ว่าง
             else if(r.status === 'BUSY') statusColor = '#ffc107'; // ติดงาน
