@@ -350,6 +350,25 @@
     <div id="finance-list"></div>
 </div>
 
+<div id="view-broadcast" class="view">
+    <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
+    <h3>📢 ประกาศข่าวสาร</h3>
+    
+    <div class="form-group">
+        <label class="form-label">ข้อความประกาศ</label>
+        <textarea id="broadcast-msg" rows="4" placeholder="พิมพ์ข้อความที่นี่..." style="resize:none;"></textarea>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-weight:bold;">เลือกผู้รับ <span id="broadcast-count">(0)</span></div>
+        <button class="btn btn-outline btn-sm" onclick="toggleAllRiders()" style="width:auto;">เลือกทั้งหมด</button>
+    </div>
+
+    <div id="broadcast-list" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-height:400px; overflow-y:auto; padding:2px;"></div>
+
+    <button class="btn btn-primary" onclick="submitBroadcast()" style="margin-top:15px;">🚀 ส่งข้อความ</button>
+</div>
+
 <div id="view-history" class="view">
     <button class="btn btn-outline" onclick="nav('home')" style="margin-bottom:15px;">🔙 เมนูหลัก</button>
     <h3>📜 ประวัติงาน</h3>
@@ -427,6 +446,7 @@
     // ✅ วางตรงนี้ครับ (บรรทัดแรกๆ ของ script)
     let selectedJobs = new Set();
     let selectedPoolJobs = new Set(); // ✅ ของ Pool (เพิ่มบรรทัดนี้)
+    let selectedRiders = new Set(); // ✅ สำหรับ Broadcast
     let pendingPhone = "";
     
     // STATE
@@ -480,6 +500,7 @@
         }
         if (role === 'SUPERADMIN') {
             menuHtml += `<div class="menu-item" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i><br>การเงิน</div>`;
+            menuHtml += `<div class="menu-item" onclick="nav('broadcast')"><i class="fa-solid fa-bullhorn"></i><br>ประกาศ</div>`;
         }
         if (['SUPERADMIN', 'SUPERVISOR', 'ADMIN'].includes(role)) {
             menuHtml += `<div class="menu-item" onclick="nav('history')"><i class="fa-solid fa-clock-rotate-left"></i><br>ประวัติ</div><div class="menu-item" onclick="nav('customers')"><i class="fa-solid fa-address-book"></i><br>ที่อยู่ลูกค้า</div>`;
@@ -537,6 +558,7 @@
             try { renderCustomerList(); } catch(e){}
             try { setupCustomerSearch(); } catch(e){ console.error(e); }
             try { renderFinance('pending'); } catch(e){}
+            try { renderBroadcastList(); } catch(e){}
         }
 
         if (role === 'WAREHOUSE') {
@@ -2193,6 +2215,78 @@
                 <i class="fa-solid fa-phone" style="color:var(--primary);"></i>
             </button>
         `;
+    }
+
+    // --- BROADCAST LOGIC ---
+    function renderBroadcastList() {
+        const list = data.all_riders || [];
+        const el = document.getElementById('broadcast-list');
+        const countEl = document.getElementById('broadcast-count');
+        
+        if (countEl) countEl.innerText = `(${selectedRiders.size})`;
+
+        if (list.length === 0) {
+            el.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#999; padding:20px;">ไม่พบข้อมูลไรเดอร์</div>';
+            return;
+        }
+
+        el.innerHTML = list.map(r => {
+            const isSel = selectedRiders.has(String(r.id));
+            
+            // Status Color logic
+            let statusColor = '#ccc';
+            let statusText = r.status || 'OFFLINE';
+            if (statusText === 'IDLE') { statusColor = '#28a745'; statusText = 'ว่าง'; }
+            else if (statusText === 'BUSY') { statusColor = '#ffc107'; statusText = 'ติดงาน'; }
+            else if (statusText === 'OFFLINE') { statusColor = '#6c757d'; statusText = 'ออฟไลน์'; }
+            else if (statusText === 'BANNED') { statusColor = '#dc3545'; statusText = 'ถูกแบน'; }
+
+            // Style for Selected state (Border & Background)
+            const cardStyle = isSel 
+                ? `border:2px solid var(--primary); background:#e8f5e9;` 
+                : `border:2px solid transparent; background:white;`;
+
+            return `
+            <div class="card" onclick="toggleSelectRider('${r.id}')" style="cursor:pointer; padding:10px; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; position:relative; ${cardStyle}">
+                ${isSel ? '<div style="position:absolute; top:5px; right:5px; color:var(--primary); font-size:16px;"><i class="fa-solid fa-circle-check"></i></div>' : ''}
+                <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${r.name}</div>
+                <div style="font-size:10px; padding:2px 8px; border-radius:10px; background:${statusColor}; color:white;">${statusText}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleSelectRider(id) {
+        const sid = String(id);
+        if (selectedRiders.has(sid)) selectedRiders.delete(sid);
+        else selectedRiders.add(sid);
+        renderBroadcastList();
+    }
+
+    function toggleAllRiders() {
+        const list = data.all_riders || [];
+        if (selectedRiders.size === list.length) {
+            selectedRiders.clear(); // Deselect all
+        } else {
+            list.forEach(r => selectedRiders.add(String(r.id))); // Select all
+        }
+        renderBroadcastList();
+    }
+
+    function submitBroadcast() {
+        const msg = document.getElementById('broadcast-msg').value;
+        if (!msg.trim()) return alert("กรุณาพิมพ์ข้อความ");
+        if (selectedRiders.size === 0) return alert("กรุณาเลือกผู้รับอย่างน้อย 1 คน");
+
+        if (confirm(`ยืนยันส่งข้อความหา ${selectedRiders.size} คน?`)) {
+            sendAction('broadcast_message', {
+                target_ids: Array.from(selectedRiders),
+                message: msg
+            });
+            // Clear UI
+            document.getElementById('broadcast-msg').value = '';
+            selectedRiders.clear();
+            renderBroadcastList();
+        }
     }
 
     // [เพิ่มใหม่] ฟังก์ชันอัปรูปและส่งจบงาน
