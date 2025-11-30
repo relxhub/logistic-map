@@ -2466,7 +2466,7 @@
                 directionsService.route({
                     origin: origin,
                     destination: destination,
-                    travelMode: google.maps.TravelMode.DRIVING,
+                    travelMode: google.maps.TravelMode.TWO_WHEELER,
                     drivingOptions: {
                         departureTime: new Date(),
                         trafficModel: 'bestguess'
@@ -2637,7 +2637,7 @@
         fullDirectionsDisplay1 = new google.maps.DirectionsRenderer({
             map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#023696", strokeWeight: 7, strokeOpacity: 0.9 }
         });
-        directionsService.route({ origin: {lat:riderLat, lng:riderLng}, destination: {lat:pickupLat, lng:pickupLng}, travelMode: 'DRIVING' }, (res, status) => {
+        directionsService.route({ origin: {lat:riderLat, lng:riderLng}, destination: {lat:pickupLat, lng:pickupLng}, travelMode: 'TWO_WHEELER' }, (res, status) => {
             if (status === "OK") fullDirectionsDisplay1.setDirections(res);
         });
 
@@ -2646,7 +2646,7 @@
         fullDirectionsDisplay2 = new google.maps.DirectionsRenderer({
             map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#6392eb", strokeWeight: 7, strokeOpacity: 0.9 }
         });
-        directionsService.route({ origin: {lat:pickupLat, lng:pickupLng}, destination: {lat:dropoffLat, lng:dropoffLng}, travelMode: 'DRIVING' }, (res, status) => {
+        directionsService.route({ origin: {lat:pickupLat, lng:pickupLng}, destination: {lat:dropoffLat, lng:dropoffLng}, travelMode: 'TWO_WHEELER' }, (res, status) => {
             if (status === "OK") fullDirectionsDisplay2.setDirections(res);
         });
         
