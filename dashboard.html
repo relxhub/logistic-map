@@ -2413,49 +2413,87 @@
 
     // ฟังก์ชันวาดแผนที่เส้นทาง (ใช้ Google Maps API ที่คุณมีอยู่แล้ว)
     function drawRoutePreview(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
-        const mapDiv = document.getElementById('route-preview-map');
-        if(!mapDiv) return;
+        // รอให้ Element โหลดเสร็จ
+        setTimeout(() => {
+            const mapDiv = document.getElementById('route-preview-map');
+            if(!mapDiv) return;
 
-        const map = new google.maps.Map(mapDiv, {
-            zoom: 13,
-            center: { lat: pickupLat, lng: pickupLng }, // จุดกลางคือร้านค้า
-            disableDefaultUI: true
-        });
-
-        const points = [
-            { lat: riderLat, lng: riderLng, icon: '🔵', label: 'คุณ' }, // A
-            { lat: pickupLat, lng: pickupLng, icon: '🔴', label: 'รับ' }, // B
-            { lat: dropoffLat, lng: dropoffLng, icon: '🟢', label: 'ส่ง' } // C
-        ];
-
-        const bounds = new google.maps.LatLngBounds();
-
-        points.forEach(p => {
-            new google.maps.Marker({
-                position: { lat: p.lat, lng: p.lng },
-                map: map,
-                label: p.label
+            // 1. สร้างแผนที่พื้นฐาน
+            const map = new google.maps.Map(mapDiv, {
+                zoom: 13,
+                center: { lat: pickupLat, lng: pickupLng }, // เซ็นเตอร์คร่าวๆ ที่จุดรับ
+                disableDefaultUI: true, // ปิดปุ่มควบคุมต่างๆ
+                gestureHandling: "none", // ห้ามเลื่อนแผนที่ (ให้ดูเป็น Preview)
+                styles: [ // (Optional) ปรับแผนที่ให้คลีนขึ้น ซ่อนสถานที่ที่ไม่จำเป็น
+                    { featureType: "poi", stylers: [{ visibility: "off" }] },
+                    { featureType: "transit", stylers: [{ visibility: "off" }] }
+                ]
             });
-            bounds.extend({ lat: p.lat, lng: p.lng });
-        });
 
-        // วาดเส้นเชื่อม
-        const path = [
-            { lat: riderLat, lng: riderLng },
-            { lat: pickupLat, lng: pickupLng },
-            { lat: dropoffLat, lng: dropoffLng }
-        ];
+            const directionsService = new google.maps.DirectionsService();
 
-        new google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: "#FF0000",
-            strokeOpacity: 1.0,
-            strokeWeight: 2,
-            map: map
-        });
+            // 2. ตั้งค่าตัววาดเส้นทาง ช่วงที่ 1: ไรเดอร์ (A) -> จุดรับ (B) [สีน้ำเงิน]
+            const rendererAB = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true, // ไม่ใช้หมุด Default ของ Google เราจะปักเอง
+                polylineOptions: { strokeColor: "#2196F3", strokeWeight: 5, strokeOpacity: 0.8 }, // เส้นสีน้ำเงิน
+                preserveViewport: true // อย่าเพิ่งขยับซูม รอวาดครบก่อน
+            });
 
-        map.fitBounds(bounds);
+            // 3. ตั้งค่าตัววาดเส้นทาง ช่วงที่ 2: จุดรับ (B) -> จุดส่ง (C) [สีเขียว]
+            const rendererBC = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true,
+                polylineOptions: { strokeColor: "#4CAF50", strokeWeight: 5, strokeOpacity: 0.8 }, // เส้นสีเขียว
+                preserveViewport: true
+            });
+
+            // 4. กำหนดพิกัดและไอคอน
+            const riderPos = new google.maps.LatLng(riderLat, riderLng);
+            const pickupPos = new google.maps.LatLng(pickupLat, pickupLng);
+            const dropoffPos = new google.maps.LatLng(dropoffLat, dropoffLng);
+            
+            // ใช้ไอคอนมาตรฐานของ Google Maps ที่สื่อความหมาย
+            const iconRider = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/motorcycling.png", scaledSize: new google.maps.Size(32, 32) };
+            const iconPickup = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/shopping.png", scaledSize: new google.maps.Size(32, 32) }; // ใช้รูปรถเข็นแทนพัสดุ (หาง่ายและสื่อว่าไปรับของ)
+            const iconDropoff = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/flag.png", scaledSize: new google.maps.Size(32, 32) };
+
+            // 5. ปักหมุดไอคอนใหม่ลงบนแผนที่
+            new google.maps.Marker({ position: riderPos, map: map, icon: iconRider, title: 'ตำแหน่งของคุณ', zIndex: 3 });
+            new google.maps.Marker({ position: pickupPos, map: map, icon: iconPickup, title: 'จุดรับสินค้า', zIndex: 2 });
+            new google.maps.Marker({ position: dropoffPos, map: map, icon: iconDropoff, title: 'จุดส่งสินค้า (เส้นชัย)', zIndex: 1 });
+
+            // Helper function สำหรับเรียก Google API
+            function calculateRoute(renderer, origin, destination) {
+                directionsService.route(
+                    {
+                        origin: origin,
+                        destination: destination,
+                        travelMode: google.maps.TravelMode.DRIVING, // คำนวณเส้นทางขับรถ
+                    },
+                    (response, status) => {
+                        if (status === "OK") {
+                            renderer.setDirections(response);
+                        } else {
+                            console.error("Directions request failed: " + status);
+                        }
+                    }
+                );
+            }
+
+            // 6. สั่งคำนวณและวาดเส้นทางทั้ง 2 ช่วง
+            calculateRoute(rendererAB, riderPos, pickupPos); // วาดช่วงแรก (น้ำเงิน)
+            calculateRoute(rendererBC, pickupPos, dropoffPos); // วาดช่วงสอง (เขียว)
+
+            // 7. จัดองค์ประกอบให้เห็นหมุดทั้งหมดพอดีจอ
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(riderPos);
+            bounds.extend(pickupPos);
+            bounds.extend(dropoffPos);
+            // เพิ่ม Padding ขอบๆ หน่อย ไม่ให้หมุดชิดขอบจอเกินไป
+            map.fitBounds(bounds, { top: 50, bottom: 50, left: 30, right: 30 }); 
+
+        }, 500); // รอ 0.5 วิ เพื่อความชัวร์ว่า div สร้างเสร็จ
     }
 
 // เรียกใช้ฟังก์ชันนี้ตอนโหลดหน้าเว็บ
