@@ -2514,9 +2514,9 @@
             const posC = new google.maps.LatLng(dropoffLat, dropoffLng); // ลูกค้า
 
             // ปักหมุดไอคอน
-            const iconRider = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/motorcycling.png", scaledSize: new google.maps.Size(32, 32) };
-            const iconPickup = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/shopping.png", scaledSize: new google.maps.Size(32, 32) };
-            const iconDropoff = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/flag.png", scaledSize: new google.maps.Size(32, 32) };
+            const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/11735/11735014.png", scaledSize: new google.maps.Size(32, 32) };
+            const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(32, 32) };
+            const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(32, 32) };
 
             new google.maps.Marker({ position: posA, map: map, icon: iconRider, zIndex: 3 });
             new google.maps.Marker({ position: posB, map: map, icon: iconPickup, zIndex: 2 });
@@ -2524,12 +2524,12 @@
 
             // คำนวณเส้นทาง
             // ช่วงที่ 1: ไรเดอร์ -> ร้าน (สีฟ้า)
-            calculateAndDisplay(posA, posB, "#2196F3", (d, t) => {
+            calculateAndDisplay(posA, posB, "#023696", (d, t) => {
                 distAtoB = d; timeAtoB = t; updateDisplay();
             });
 
             // ช่วงที่ 2: ร้าน -> ลูกค้า (สีเขียว)
-            calculateAndDisplay(posB, posC, "#4CAF50", (d, t) => {
+            calculateAndDisplay(posB, posC, "#6392eb", (d, t) => {
                 distBtoC = d; timeBtoC = t; updateDisplay();
             });
 
@@ -2543,11 +2543,11 @@
                     el.innerHTML = `
                         <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #ddd; font-family:'Kanit'; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
-                                <span style="color:#2196F3;"><i class="fa-solid fa-motorcycle"></i> คุณ ➝ ร้าน</span>
+                                <span style="color:#2196F3;"><i class="fa-solid fa-motorcycle"></i> คุณ ➝ พัสดุ</span>
                                 <b>${distAtoB.toFixed(1)} กม. (${timeAtoB} น.)</b>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
-                                <span style="color:#4CAF50;"><i class="fa-solid fa-store"></i> ร้าน ➝ ลูกค้า</span>
+                                <span style="color:#4CAF50;"><i class="fa-solid fa-store"></i> พัสดุ ➝ ลูกค้า</span>
                                 <b>${distBtoC.toFixed(1)} กม. (${timeBtoC} น.)</b>
                             </div>
                             <div style="height:1px; background:#eee; margin:5px 0;"></div>
