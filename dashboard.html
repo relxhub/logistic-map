@@ -2513,10 +2513,10 @@
             new google.maps.Marker({ position: posC, map: map, icon: iconDropoff, zIndex: 1 });
 
             // คำนวณเส้นทาง
-            calculateAndDisplay(posA, posB, "#ffffff", 7, (d, t) => {
+            calculateAndDisplay(posA, posB, "#ffffff", 4, (d, t) => {
                 distAtoB = d; timeAtoB = t; updateDisplay();
             });
-            calculateAndDisplay(posB, posC, "#dedede", 7, (d, t) => {
+            calculateAndDisplay(posB, posC, "#dedede", 4, (d, t) => {
                 distBtoC = d; timeBtoC = t; updateDisplay();
             });
 
@@ -2626,10 +2626,10 @@
         }
 
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
-        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#ffffff", 10);
+        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#ffffff", 5);
 
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
-        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#dedede", 10);
+        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#dedede", 5);
         
         const bounds = new google.maps.LatLngBounds();
         bounds.extend({lat:riderLat, lng:riderLng});
