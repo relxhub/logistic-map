@@ -769,16 +769,16 @@
                     <div style="background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                             <span>🛵 คุณ ➝ 🏪 ร้าน (A➝B)</span>
-                            <b>${distToPickup.toFixed(1)} กม. (${timeToPickup} น.)</b>
+                            <b>${distToPickup.toFixed(1)} กม. (${timeToPickup} นาที)</b>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                             <span>🏪 ร้าน ➝ 🏠 ลูกค้า (B➝C)</span>
-                            <b>${distDelivery.toFixed(1)} กม. (${timeDelivery} น.)</b>
+                            <b>${distDelivery.toFixed(1)} กม. (${timeDelivery} นาที)</b>
                         </div>
                         <hr style="margin:5px 0;">
                         <div style="display:flex; justify-content:space-between; color:var(--primary); font-weight:bold;">
                             <span>🏁 รวมทั้งหมด</span>
-                            <span>${totalDist.toFixed(1)} กม. (~${totalTime} น.)</span>
+                            <span>${totalDist.toFixed(1)} กม. (~${totalTime} นาที)</span>
                         </div>
                     </div>
                 `;
@@ -2426,13 +2426,37 @@
     }
 
     // ==================================================
-    // [UPDATE] ฟังก์ชันวาดแผนที่ (แมพเล็ก: ไม่มีป้ายเวลา, เส้นทึบ)
+    // [CONFIG] สไตล์แผนที่ (ใช้ร่วมกันทั้งแมพเล็กและใหญ่)
+    // ==================================================
+    const stylishMapStyles = [
+        // 1. ซ่อนไอคอนสถานที่และป้ายต่างๆ (Clean Look)
+        { featureType: "poi", stylers: [{ visibility: "off" }] },
+        { featureType: "transit", stylers: [{ visibility: "off" }] },
+        { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+
+        // 2. ธีมมืด (Dark Mode)
+        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+        { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+        { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+        { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+        { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+    ];
+
+    // ==================================================
+    // [UPDATE] ฟังก์ชันแมพเล็ก (ใส่ธีมมืด + ซูมใกล้)
     // ==================================================
     function drawRoutePreview(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
         setTimeout(() => {
             const mapDiv = document.getElementById('route-preview-map');
             
-            // เพิ่ม Event คลิกเพื่อเปิดหน้าจอใหญ่
+            // คลิกแล้วเปิดแมพใหญ่
             mapDiv.onclick = () => {
                 openFullMap(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng);
             };
@@ -2440,26 +2464,22 @@
             
             if(!mapDiv) return;
 
-            // 1. สร้างแผนที่
             const map = new google.maps.Map(mapDiv, {
                 zoom: 13,
                 center: { lat: pickupLat, lng: pickupLng },
                 disableDefaultUI: true,
-                gestureHandling: "none"
+                gestureHandling: "none",
+                styles: stylishMapStyles // ✅ ใส่สไตล์ Dark Mode ให้แมพเล็ก
             });
 
             const directionsService = new google.maps.DirectionsService();
-
-            // ตัวแปรเก็บผลลัพธ์
             let distAtoB = 0, timeAtoB = 0;
             let distBtoC = 0, timeBtoC = 0;
 
-            // [Helper] ฟังก์ชันวาดเส้น (ไม่มีป้ายเวลา)
             function calculateAndDisplay(origin, destination, color, callback) {
                 const renderer = new google.maps.DirectionsRenderer({
                     map: map,
                     suppressMarkers: true,
-                    // ✅ ใช้ DRIVING เพื่อให้เส้นเป็นเส้นทึบ (ไม่เป็นจุด)
                     polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.8 },
                     preserveViewport: true
                 });
@@ -2467,34 +2487,23 @@
                 directionsService.route({
                     origin: origin,
                     destination: destination,
-                    travelMode: google.maps.TravelMode.DRIVING, // ✅ แก้เป็น DRIVING แก้ปัญหาเส้นจุด
-                    drivingOptions: {
-                        departureTime: new Date(),
-                        trafficModel: 'bestguess'
-                    }
+                    travelMode: google.maps.TravelMode.DRIVING,
+                    drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
                 }, (response, status) => {
                     if (status === "OK") {
                         renderer.setDirections(response);
-                        
                         const leg = response.routes[0].legs[0];
                         const distVal = leg.distance.value / 1000;
                         const timeVal = Math.ceil(leg.duration.value / 60);
-                        
-                        // (แมพเล็ก ไม่ต้องสร้าง Marker ป้ายเวลา)
-
                         callback(distVal, timeVal);
-                    } else {
-                        console.error("Directions failed: " + status);
                     }
                 });
             }
 
-            // กำหนดพิกัด
-            const posA = new google.maps.LatLng(riderLat, riderLng);   // ไรเดอร์
-            const posB = new google.maps.LatLng(pickupLat, pickupLng); // ร้านค้า
-            const posC = new google.maps.LatLng(dropoffLat, dropoffLng); // ลูกค้า
+            const posA = new google.maps.LatLng(riderLat, riderLng);
+            const posB = new google.maps.LatLng(pickupLat, pickupLng);
+            const posC = new google.maps.LatLng(dropoffLat, dropoffLng);
 
-            // ปักหมุดไอคอน
             const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/11735/11735014.png", scaledSize: new google.maps.Size(32, 32) };
             const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(32, 32) };
             const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(32, 32) };
@@ -2504,12 +2513,9 @@
             new google.maps.Marker({ position: posC, map: map, icon: iconDropoff, zIndex: 1 });
 
             // คำนวณเส้นทาง
-            // ช่วงที่ 1: ไรเดอร์ -> ร้าน (สีน้ำเงินเข้ม)
             calculateAndDisplay(posA, posB, "#023696", (d, t) => {
                 distAtoB = d; timeAtoB = t; updateDisplay();
             });
-
-            // ช่วงที่ 2: ร้าน -> ลูกค้า (สีน้ำเงินอ่อน)
             calculateAndDisplay(posB, posC, "#6392eb", (d, t) => {
                 distBtoC = d; timeBtoC = t; updateDisplay();
             });
@@ -2540,95 +2546,56 @@
                     `;
                 }
                 
+                // ✅ ปรับการซูม (Zoom Logic)
                 const bounds = new google.maps.LatLngBounds();
                 bounds.extend(posA); bounds.extend(posB); bounds.extend(posC);
-                map.fitBounds(bounds, { top: 50, bottom: 50, left: 30, right: 30 });
+                
+                // ลด padding ลงเหลือ 10 (จากเดิม 50) เพื่อให้ซูมเข้ามาใกล้ขึ้น
+                map.fitBounds(bounds, { top: 10, bottom: 10, left: 10, right: 10 });
             }
 
         }, 500);
     }
 
-    // --- [START] Fullscreen Map Logic (แมพใหญ่: มีป้ายเวลา, เส้นทึบ) ---
+    // --- [START] Fullscreen Map Logic ---
 
-    // เก็บตัวแปรแผนที่เต็มจอไว้
     let fullMap = null;
     let fullDirectionsDisplay1, fullDirectionsDisplay2;
-    let fullTimeLabels = []; // เก็บตัวแปรป้ายเวลาเพื่อลบออกเมื่อปิด
+    let fullTimeLabels = [];
 
-    // ฟังก์ชันปิด Modal
     function closeFullMap() {
         document.getElementById('fullMapModal').style.display = 'none';
     }
 
-    // ฟังก์ชันเปิด Modal และวาดแผนที่เต็มจอ
     function openFullMap(riderLat, riderLng, pickupLat, pickupLng, dropoffLat, dropoffLng) {
         const modal = document.getElementById('fullMapModal');
         const mapCanvas = document.getElementById('full-map-canvas');
         modal.style.display = 'block';
 
-        // สไตล์แผนที่แบบมืออาชีพ (Dark Mode + Clean No Icons)
-        const stylishMapStyles = [
-            // --- [ส่วนที่เพิ่ม] ซ่อนไอคอนสถานที่และป้ายต่างๆ ---
-            {
-                featureType: "poi",
-                stylers: [{ visibility: "off" }] // ซ่อนสถานที่ต่างๆ (ห้าง, วัด, ร้านค้า)
-            },
-            {
-                featureType: "transit",
-                stylers: [{ visibility: "off" }] // ซ่อนขนส่งสาธารณะ
-            },
-            {
-                featureType: "road",
-                elementType: "labels.icon",
-                stylers: [{ visibility: "off" }] // ซ่อนป้ายหมายเลขถนน (ถ้าอยากให้คลีนที่สุด)
-            },
-            // ------------------------------------------------
-
-            // --- สไตล์สี Dark Mode เดิมของคุณ ---
-            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-            { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-            { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-            { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-            { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-            { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-            { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-            { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-            { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-            { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
-        ];
-
-        // สร้างแผนที่เต็มจอ (ซูม/เลื่อนได้)
         if (!fullMap) {
             fullMap = new google.maps.Map(mapCanvas, {
                 zoom: 13,
                 center: { lat: pickupLat, lng: pickupLng },
-                styles: stylishMapStyles, // ใส่สไตล์ Dark Mode
-                disableDefaultUI: false, // เปิด UI ปุ่มซูมต่างๆ
-                gestureHandling: "greedy" // ให้เลื่อนได้ง่ายดาย
+                styles: stylishMapStyles, // ✅ ใช้สไตล์เดียวกัน
+                disableDefaultUI: false,
+                gestureHandling: "greedy"
             });
         } else {
             fullMap.setCenter({ lat: pickupLat, lng: pickupLng });
-            // เคลียร์ป้ายเวลาเก่าออกก่อนวาดใหม่
             fullTimeLabels.forEach(label => label.setMap(null));
             fullTimeLabels = [];
         }
 
-        // ไอคอนใหม่
         const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/11735/11735014.png", scaledSize: new google.maps.Size(35, 35) }; 
         const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(35, 35) }; 
         const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(35, 35) }; 
 
-        // ปักหมุด
         new google.maps.Marker({ position: {lat:riderLat, lng:riderLng}, map: fullMap, icon: iconRider, zIndex:3 });
         new google.maps.Marker({ position: {lat:pickupLat, lng:pickupLng}, map: fullMap, icon: iconPickup, zIndex:2 });
         new google.maps.Marker({ position: {lat:dropoffLat, lng:dropoffLng}, map: fullMap, icon: iconDropoff, zIndex:1 });
 
-        // วาดเส้นทางจริง
         const directionsService = new google.maps.DirectionsService();
 
-        // Helper วาดเส้นและป้ายในแมพใหญ่
         function drawFullLeg(origin, dest, color) {
             const renderer = new google.maps.DirectionsRenderer({
                 map: fullMap, 
@@ -2637,46 +2604,33 @@
             });
             
             directionsService.route({
-                origin: origin, destination: dest, 
-                // ✅ ใช้ DRIVING เพื่อให้เส้นทึบ
-                travelMode: google.maps.TravelMode.DRIVING 
+                origin: origin, destination: dest, travelMode: google.maps.TravelMode.DRIVING 
             }, (res, status) => {
                 if (status === "OK") {
                     renderer.setDirections(res);
-                    
-                    // ✅✅✅ ส่วนที่เพิ่ม: สร้างป้ายเวลา (เฉพาะในแมพใหญ่) ✅✅✅
                     const leg = res.routes[0].legs[0];
                     const durationText = leg.duration.text.replace("mins", "น.").replace("min", "น.");
-                    
                     const path = res.routes[0].overview_path;
-                    const midPoint = path[Math.floor(path.length / 2)]; // หาจุดกึ่งกลางเส้น
+                    const midPoint = path[Math.floor(path.length / 2)]; 
 
                     const labelMarker = new google.maps.Marker({
-                        position: midPoint,
-                        map: fullMap,
-                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 }, // ซ่อนหมุดวงกลม
-                        label: {
-                            text: durationText, // เช่น "11 น."
-                            className: "map-time-label",
-                            color: "#333333"
-                        },
+                        position: midPoint, map: fullMap,
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 },
+                        label: { text: durationText, className: "map-time-label", color: "#333333" },
                         zIndex: 100
                     });
-                    fullTimeLabels.push(labelMarker); // เก็บไว้ลบทีหลัง
+                    fullTimeLabels.push(labelMarker);
                 }
             });
             return renderer;
         }
 
-        // เส้นที่ 1 (น้ำเงินเข้ม)
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
-        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#4285F4"); // สีฟ้าสว่าง (Google Blue) ให้ตัดกับพื้นหลังมืด
+        fullDirectionsDisplay1 = drawFullLeg({lat:riderLat, lng:riderLng}, {lat:pickupLat, lng:pickupLng}, "#4285F4");
 
-        // เส้นที่ 2 (น้ำเงินอ่อน/ส้ม)
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
-        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#6392eb"); // สีส้ม ให้เด่นบนพื้นมืด
+        fullDirectionsDisplay2 = drawFullLeg({lat:pickupLat, lng:pickupLng}, {lat:dropoffLat, lng:dropoffLng}, "#FFA726");
         
-        // จัดองค์ประกอบ
         const bounds = new google.maps.LatLngBounds();
         bounds.extend({lat:riderLat, lng:riderLng});
         bounds.extend({lat:pickupLat, lng:pickupLng});
