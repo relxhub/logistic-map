@@ -2452,7 +2452,7 @@
                 directionsService.route({
                     origin: origin,
                     destination: destination,
-                    travelMode: google.maps.TravelMode.DRIVING, // 🚗 โหมดขับรถจริง
+                    travelMode: google.maps.TravelMode.TWO_WHEELER, // 🚗 โหมดขับรถจริง
                     drivingOptions: {
                         departureTime: new Date(), // คำนวณสภาพจราจร ณ ตอนนี้
                         trafficModel: 'bestguess'
@@ -2477,9 +2477,9 @@
             const posC = new google.maps.LatLng(dropoffLat, dropoffLng); // ลูกค้า
 
             // ปักหมุดไอคอน
-            const iconRider = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/motorcycling.png", scaledSize: new google.maps.Size(32, 32) };
-            const iconPickup = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/shopping.png", scaledSize: new google.maps.Size(32, 32) };
-            const iconDropoff = { url: "https://maps.gstatic.com/mapfiles/ms2/micons/flag.png", scaledSize: new google.maps.Size(32, 32) };
+            const iconRider = { url: "https://cdn-icons-png.flaticon.com/512/11735/11735014.png", scaledSize: new google.maps.Size(26, 26) };
+            const iconPickup = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(26, 26) };
+            const iconDropoff = { url: "https://cdn-icons-png.flaticon.com/512/854/854853.png", scaledSize: new google.maps.Size(26, 26) };
 
             new google.maps.Marker({ position: posA, map: map, icon: iconRider, zIndex: 3 });
             new google.maps.Marker({ position: posB, map: map, icon: iconPickup, zIndex: 2 });
@@ -2487,15 +2487,15 @@
 
             // --- เริ่มคำนวณและอัปเดตหน้าจอ ---
             
-            // ช่วงที่ 1: คุณ(A) -> ร้าน(B) [สีน้ำเงิน]
-            calculateAndDisplay(posA, posB, "#2196F3", (d, t) => {
+            // ช่วงที่ 1: คุณ(A) -> ร้าน(B) [สีน้ำเงินเข้ม]
+            calculateAndDisplay(posA, posB, "#023696", (d, t) => {
                 distAtoB = d;
                 timeAtoB = t;
                 updateDisplay(); // อัปเดตตัวเลข
             });
 
-            // ช่วงที่ 2: ร้าน(B) -> ลูกค้า(C) [สีเขียว]
-            calculateAndDisplay(posB, posC, "#4CAF50", (d, t) => {
+            // ช่วงที่ 2: ร้าน(B) -> ลูกค้า(C) [สีน้ำเงินอ่อน]
+            calculateAndDisplay(posB, posC, "#6392eb", (d, t) => {
                 distBtoC = d;
                 timeBtoC = t;
                 updateDisplay(); // อัปเดตตัวเลข
@@ -2607,7 +2607,7 @@
         // วาดเส้นทางจริง (เรียกซ้ำจากที่เราเคยคำนวณไว้แล้ว)
         const directionsService = new google.maps.DirectionsService();
 
-        // เส้นที่ 1 (น้ำเงิน)
+        // เส้นที่ 1 (น้ำเงินเข้ม)
         if (fullDirectionsDisplay1) fullDirectionsDisplay1.setMap(null);
         fullDirectionsDisplay1 = new google.maps.DirectionsRenderer({
             map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#023696", strokeWeight: 7, strokeOpacity: 0.9 }
@@ -2616,7 +2616,7 @@
             if (status === "OK") fullDirectionsDisplay1.setDirections(res);
         });
 
-        // เส้นที่ 2 (เขียว)
+        // เส้นที่ 2 (น้ำเงินอ่อน)
         if (fullDirectionsDisplay2) fullDirectionsDisplay2.setMap(null);
         fullDirectionsDisplay2 = new google.maps.DirectionsRenderer({
             map: fullMap, suppressMarkers: true, polylineOptions: { strokeColor: "#6392eb", strokeWeight: 7, strokeOpacity: 0.9 }
